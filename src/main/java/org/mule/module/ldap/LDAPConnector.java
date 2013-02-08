@@ -1343,7 +1343,14 @@ public class LDAPConnector
         
         if(LOGGER.isInfoEnabled())
         {
-            LOGGER.info("Deleted value " + attributeValue + " from attribute " + attributeName + " on entry " + dn);
+            if(attributeValue != null && attributeValue.length() > 0)
+            {
+                LOGGER.info("Deleted value " + attributeValue + " from attribute " + attributeName + " from entry " + dn);
+            }
+            else
+            {
+                LOGGER.info("Deleted attribute " + attributeName + " from entry " + dn);
+            }
         }          
         
     }

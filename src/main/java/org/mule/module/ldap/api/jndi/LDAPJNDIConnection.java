@@ -268,12 +268,15 @@ public class LDAPJNDIConnection extends LDAPConnection
             try
             {
                 getConn().close();
-                setConn(null);
                 logger.info("Connection closed.");
             }
             catch (NamingException nex)
             {
                 throw handleNamingException(nex, "Close connection failed.");
+            } 
+            finally
+            {
+                setConn(null);
             }
         }
     }

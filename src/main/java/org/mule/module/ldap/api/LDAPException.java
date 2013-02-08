@@ -50,8 +50,7 @@ public class LDAPException extends Exception
         EX_MAPPINGS.put(javax.naming.directory.InvalidAttributeIdentifierException.class, InvalidAttributeException.class);
         EX_MAPPINGS.put(javax.naming.directory.AttributeInUseException.class, InvalidAttributeException.class);
         EX_MAPPINGS.put(javax.naming.ContextNotEmptyException.class, ContextNotEmptyException.class);
-        
-        
+        EX_MAPPINGS.put(javax.naming.ServiceUnavailableException.class, CommunicationException.class);
     }
     
     public LDAPException()
