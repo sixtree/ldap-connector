@@ -887,6 +887,13 @@ public class LDAPJNDIConnection extends LDAPConnection
     @Override
     public String toString()
     {
-        return getAuthentication() + "@" + getProviderUrl();
+        try
+        {
+            return getBindedUserDn() + "@" + getProviderUrl();
+        }
+        catch(Throwable ex)
+        {
+            return "{unknown}@" + getProviderUrl();
+        }
     }
 }
