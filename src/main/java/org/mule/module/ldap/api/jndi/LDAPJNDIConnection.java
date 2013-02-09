@@ -883,4 +883,10 @@ public class LDAPJNDIConnection extends LDAPConnection
     {
         this.referral = referral;
     }
+    
+    @Override
+    public String toString()
+    {
+        return getAuthentication() + "@" + getProviderUrl();
+    }
 }
