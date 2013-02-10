@@ -21,6 +21,7 @@ import java.util.Map;
 import javax.naming.NamingException;
 
 import org.junit.Test;
+import org.mule.module.ldap.api.CommunicationException;
 import org.mule.module.ldap.api.LDAPEntry;
 import org.mule.module.ldap.api.LDAPException;
 
@@ -131,7 +132,8 @@ public class LDAPDeleteAttributeTest extends AbstractLDAPConnectorTest
         params.put("attributeName", "telephoneNumber");
         params.put("attributeValues", tels);
         
-        Throwable ex = runFlowWithPayloadAndExpectException("testDeleteMultiAttributeFlow", LDAPException.class, params);
+        // This test is returning with LDAP error Code 80 (LDAP_OTHER) so it is mapped to CommunicationException
+        Throwable ex = runFlowWithPayloadAndExpectException("testDeleteMultiAttributeFlow", CommunicationException.class, params);
         
         assertEquals(ex.getCause().getClass(), NamingException.class);
     }    
