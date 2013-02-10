@@ -25,8 +25,6 @@ public abstract class LDAPConnection
 
     protected final Log logger = LogFactory.getLog(getClass());
 
-    private String name = null;
-
     protected static final Map<String, Class<?>> CONNECTION_IMPLEMENTATIONS = new HashMap<String, Class<?>>();
 
     static
@@ -252,14 +250,4 @@ public abstract class LDAPConnection
      * @throws LDAPException
      */
     public abstract boolean isClosed() throws LDAPException;
-
-    public String getName()
-    {
-        return name;
-    }
-
-    public void setName(String name)
-    {
-        this.name = name;
-    }
 }

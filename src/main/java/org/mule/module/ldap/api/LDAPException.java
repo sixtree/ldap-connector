@@ -22,6 +22,8 @@ import java.util.Map;
 
 import javax.naming.NamingException;
 
+import org.apache.log4j.Logger;
+
 /**
  * This class is the abstraction
  * 
@@ -29,7 +31,6 @@ import javax.naming.NamingException;
  */
 public class LDAPException extends Exception
 {
-
     /**
 	 * 
 	 */

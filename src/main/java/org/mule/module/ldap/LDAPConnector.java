@@ -9,7 +9,9 @@
 package org.mule.module.ldap;
 
 import java.net.UnknownHostException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -167,7 +169,7 @@ import org.mule.util.StringUtils;
 //:TODO: New in DevKit Version 3.3.x -> Move component from CC Category. For example -> @Category(name = "org.mule.tooling.category.security", description = "Security")
 public class LDAPConnector
 {
-    private static final Logger LOGGER = Logger.getLogger(LDAPConnector.class);
+    protected final Logger logger = Logger.getLogger(getClass());
     
     /**
      * The connection URL to the LDAP server with the following syntax: <code>ldap[s]://hostname:port/base_dn</code>.
@@ -236,6 +238,8 @@ public class LDAPConnector
      * LDAP client
      */
     private LDAPConnection connection = null;
+    
+    private final String connectionIdPrefix = new SimpleDateFormat("yyyyMMddHHmmss").format(new Date());
     
     // Connection Management
     /**
@@ -319,6 +323,10 @@ public class LDAPConnector
     @Disconnect
     public void disconnect()
     {
+        if(logger.isDebugEnabled())
+        {
+            logger.debug("About to disconnect " + connectionId());
+        }
         if (this.connection != null)
         {
             try
@@ -327,7 +335,7 @@ public class LDAPConnector
             }
             catch (LDAPException ex)
             {
-                LOGGER.error("Unable to close connection to LDAP. Forcing close anyway.", ex);
+                logger.error("Unable to close connection " + connectionId() + ". Forcing close anyway.", ex);
             }
             finally
             {
@@ -350,7 +358,7 @@ public class LDAPConnector
         }
         catch (Exception ex)
         {
-            LOGGER.error("Unable to validate LDAP connection. Returning that LDAP is not connected.", ex);
+            logger.error("Unable to validate LDAP connection. Returning that LDAP is not connected.", ex);
             return false;
         }        
     }
@@ -363,7 +371,7 @@ public class LDAPConnector
     @ConnectionIdentifier
     public String connectionId()
     {
-        return this.connection != null ? this.connection.toString() : "null connection";
+        return "[" + connectionIdPrefix + "]:" + (this.connection != null ? this.connection.toString() : "{null connection}");
     }
 
     // Operations
@@ -404,32 +412,32 @@ public class LDAPConnector
         
         String dn = this.connection.getBindedUserDn();
         
-        if(LOGGER.isInfoEnabled())
+        if(logger.isInfoEnabled())
         {
-            LOGGER.info("Bind was successful for user: " + (dn != null ? dn : "Anonymous"));
+            logger.info("Bind was successful for user: " + (dn != null ? dn : "Anonymous"));
         }        
         
         LDAPEntry entry = null;
         
         if(dn != null)
         {
-            if(LOGGER.isDebugEnabled())
+            if(logger.isDebugEnabled())
             {
-                LOGGER.debug("About to retrieve authenticated user entry for: " + dn);
+                logger.debug("About to retrieve authenticated user entry for: " + dn);
             }
             
             entry = this.connection.lookup(dn);
 
-            if(LOGGER.isDebugEnabled())
+            if(logger.isDebugEnabled())
             {
-                LOGGER.debug("Retrieved entry: " + entry);
+                logger.debug("Retrieved entry: " + entry);
             }
         }
         else
         {
-            if(LOGGER.isDebugEnabled())
+            if(logger.isDebugEnabled())
             {
-                LOGGER.debug("Anoymous user returns no entry (null)");
+                logger.debug("Anoymous user returns no entry (null)");
             }            
         }
         return entry;
@@ -463,9 +471,9 @@ public class LDAPConnector
     @InvalidateConnectionOn(exception = CommunicationException.class)
     public LDAPEntry lookup(@FriendlyName("DN") String dn, @Optional List<String> attributes) throws Exception
     {
-        if(LOGGER.isDebugEnabled())
+        if(logger.isDebugEnabled())
         {
-            LOGGER.debug("About to retrieve LDAP entry: " + dn);
+            logger.debug("About to retrieve LDAP entry: " + dn);
         }
         
         LDAPEntry entry = null;
@@ -478,9 +486,9 @@ public class LDAPConnector
             entry = this.connection.lookup(dn);
         }
         
-        if(LOGGER.isDebugEnabled())
+        if(logger.isDebugEnabled())
         {
-            LOGGER.debug("Retrieved entry: " + entry);
+            logger.debug("Retrieved entry: " + entry);
         }
         
         return entry;
@@ -565,9 +573,9 @@ public class LDAPConnector
         LDAPResultSet result = null;
         try
         {
-            if(LOGGER.isDebugEnabled())
+            if(logger.isDebugEnabled())
             {
-                LOGGER.debug("About to search LDAP entries matching " + filter + " under: " + baseDn);
+                logger.debug("About to search LDAP entries matching " + filter + " under: " + baseDn);
             }
             
             LDAPSearchControls controls = new LDAPSearchControls();
@@ -585,9 +593,9 @@ public class LDAPConnector
             
             List<LDAPEntry> allEntries = result.getAllEntries();
             
-            if(LOGGER.isDebugEnabled())
+            if(logger.isDebugEnabled())
             {
-                LOGGER.debug("Retrieved " + allEntries.size() + " entries");
+                logger.debug("Retrieved " + allEntries.size() + " entries");
             }
             
             return allEntries;        
@@ -663,9 +671,9 @@ public class LDAPConnector
             resultOffset = resultOffset <= 0 ? 0 : resultOffset;
             resultPageCount = resultPageCount <= 0 ? 0 : resultPageCount;
             
-            if(LOGGER.isDebugEnabled())
+            if(logger.isDebugEnabled())
             {
-                LOGGER.debug("About to search LDAP entries matching " + filter + " under: " + baseDn + ". Returning results in pages of " + resultPageSize + " entries.");
+                logger.debug("About to search LDAP entries matching " + filter + " under: " + baseDn + ". Returning results in pages of " + resultPageSize + " entries.");
             }
             
             LDAPSearchControls controls = new LDAPSearchControls();
@@ -688,9 +696,9 @@ public class LDAPConnector
             
             if(resultPageSize == 1)
             {
-                if(LOGGER.isDebugEnabled())
+                if(logger.isDebugEnabled())
                 {
-                    LOGGER.debug("Offest is " + resultOffset + ". Skipping the first " + resultOffset + " entries");
+                    logger.debug("Offest is " + resultOffset + ". Skipping the first " + resultOffset + " entries");
                 }
                 skipEntries(result, resultOffset);
                 
@@ -699,9 +707,9 @@ public class LDAPConnector
                     entryCount++;
                     anEntry = result.next();
 
-                    if(LOGGER.isDebugEnabled())
+                    if(logger.isDebugEnabled())
                     {
-                        LOGGER.debug("Entry " + entryCount + " -> " + anEntry);
+                        logger.debug("Entry " + entryCount + " -> " + anEntry);
                     }
                     
                     flowResult = callback.process(anEntry);
@@ -711,9 +719,9 @@ public class LDAPConnector
                         flowResults.add(flowResult);
                     }
                     
-                    if(LOGGER.isDebugEnabled())
+                    if(logger.isDebugEnabled())
                     {
-                        LOGGER.debug("Processed entry " + entryCount);
+                        logger.debug("Processed entry " + entryCount);
                     }
                 }
             }
@@ -721,9 +729,9 @@ public class LDAPConnector
             {
                 List<LDAPEntry> page;
                 
-                if(LOGGER.isDebugEnabled())
+                if(logger.isDebugEnabled())
                 {
-                    LOGGER.debug("Offest is " + resultOffset + ". Skipping the first " + resultOffset + " pages of size " + resultPageSize);
+                    logger.debug("Offest is " + resultOffset + ". Skipping the first " + resultOffset + " pages of size " + resultPageSize);
                 }
                 skipEntries(result, resultPageSize * resultOffset);
                 
@@ -737,17 +745,17 @@ public class LDAPConnector
                         entryCount++;
                         anEntry = result.next();
                         
-                        if(LOGGER.isDebugEnabled())
+                        if(logger.isDebugEnabled())
                         {
-                            LOGGER.debug("Page " + pageCount + " / Entry " + entryCount + " -> " + anEntry);
+                            logger.debug("Page " + pageCount + " / Entry " + entryCount + " -> " + anEntry);
                         }
                         
                         page.add(anEntry);
                     }
 
-                    if(LOGGER.isDebugEnabled())
+                    if(logger.isDebugEnabled())
                     {
-                        LOGGER.debug("Page " + pageCount + " -> " + page);
+                        logger.debug("Page " + pageCount + " -> " + page);
                     }
                     
                     flowResult = callback.process(page);
@@ -757,9 +765,9 @@ public class LDAPConnector
                         flowResults.add(flowResult);
                     }
                     
-                    if(LOGGER.isDebugEnabled())
+                    if(logger.isDebugEnabled())
                     {
-                        LOGGER.debug("Processed page " + pageCount);
+                        logger.debug("Processed page " + pageCount);
                     }
                 }
             }
@@ -832,16 +840,16 @@ public class LDAPConnector
     @InvalidateConnectionOn(exception = CommunicationException.class)
     public LDAPEntry searchOne(@FriendlyName("Base DN") String baseDn, String filter, @Optional List<String> attributes, @Optional @Default("ONE_LEVEL") SearchScope scope, @Optional @Default("0") @Placement(group = "Search Controls") int timeout, @Optional @Default("0") @Placement(group = "Search Controls") long maxResults, @Optional @Default("false") @Placement(group = "Search Controls") boolean returnObject) throws Exception
     {
-        if(LOGGER.isDebugEnabled())
+        if(logger.isDebugEnabled())
         {
-            LOGGER.debug("Searching entries under " + baseDn + " with filter " + filter);
+            logger.debug("Searching entries under " + baseDn + " with filter " + filter);
         }
         
         List<LDAPEntry> results = search(baseDn, filter, attributes, scope, timeout, maxResults, returnObject, 0);
         
         if(results != null && results.size() > 1)
         {
-            LOGGER.warn("Search returned more than one result. Total results matching filter [" + filter + "]: " + results.size());
+            logger.warn("Search returned more than one result. Total results matching filter [" + filter + "]: " + results.size());
         }
         
         return results != null && results.size() > 0 ? results.get(0) : null;
@@ -869,16 +877,16 @@ public class LDAPConnector
     @InvalidateConnectionOn(exception = CommunicationException.class)
     public void add(@Optional @Default("#[payload:]") LDAPEntry entry) throws Exception
     {
-        if(LOGGER.isDebugEnabled())
+        if(logger.isDebugEnabled())
         {
-            LOGGER.debug("About to add entry " + entry.getDn() + ": " + entry);
+            logger.debug("About to add entry " + entry.getDn() + ": " + entry);
         }        
         
         this.connection.addEntry(entry);
         
-        if(LOGGER.isInfoEnabled())
+        if(logger.isInfoEnabled())
         {
-            LOGGER.info("Added entry " + entry.getDn());
+            logger.info("Added entry " + entry.getDn());
         }
     }
     
@@ -929,21 +937,21 @@ public class LDAPConnector
         }
         else
         {
-            LOGGER.debug("DN is blank. Retrieved DN from entry map (key = " + LDAPEntry.MAP_DN_KEY + "): " + entryDn);
+            logger.debug("DN is blank. Retrieved DN from entry map (key = " + LDAPEntry.MAP_DN_KEY + "): " + entryDn);
         }
         
-        LOGGER.info ( "The dn is \"" + entryDn + "\"" );
+        logger.info ( "The dn is \"" + entryDn + "\"" );
 
-        if(LOGGER.isDebugEnabled())
+        if(logger.isDebugEnabled())
         {
-            LOGGER.debug("About to add entry " + entryDn + ": " + entry);
+            logger.debug("About to add entry " + entryDn + ": " + entry);
         }
         
         this.connection.addEntry(new LDAPEntry(entryDn, entry));
         
-        if(LOGGER.isInfoEnabled())
+        if(logger.isInfoEnabled())
         {
-            LOGGER.info("Added entry " + entryDn);
+            logger.info("Added entry " + entryDn);
         }
     }
     
@@ -1006,16 +1014,16 @@ public class LDAPConnector
     @InvalidateConnectionOn(exception = CommunicationException.class)
     public void modify(@Optional @Default("#[payload:]") LDAPEntry entry) throws Exception
     {
-        if(LOGGER.isDebugEnabled())
+        if(logger.isDebugEnabled())
         {
-            LOGGER.debug("About to modify entry " + entry.getDn() + ": " + entry);
+            logger.debug("About to modify entry " + entry.getDn() + ": " + entry);
         }        
         
         this.connection.updateEntry(entry);
         
-        if(LOGGER.isInfoEnabled())
+        if(logger.isInfoEnabled())
         {
-            LOGGER.info("Modified entry " + entry.getDn());
+            logger.info("Modified entry " + entry.getDn());
         }
     }
     
@@ -1102,19 +1110,19 @@ public class LDAPConnector
         }
         else
         {
-            LOGGER.debug("DN is blank. Retrieved DN from entry map (key = " + LDAPEntry.MAP_DN_KEY + "): " + entryDn);
+            logger.debug("DN is blank. Retrieved DN from entry map (key = " + LDAPEntry.MAP_DN_KEY + "): " + entryDn);
         }
 
-        if(LOGGER.isDebugEnabled())
+        if(logger.isDebugEnabled())
         {
-            LOGGER.debug("About to update entry " + entryDn + ": " + entry);
+            logger.debug("About to update entry " + entryDn + ": " + entry);
         }
         
         this.connection.updateEntry(new LDAPEntry(entryDn, entry));
         
-        if(LOGGER.isInfoEnabled())
+        if(logger.isInfoEnabled())
         {
-            LOGGER.info("Updated entry " + entryDn);
+            logger.info("Updated entry " + entryDn);
         }
     }
 
@@ -1138,16 +1146,16 @@ public class LDAPConnector
     @InvalidateConnectionOn(exception = CommunicationException.class)
     public void delete(@Optional @Default("#[payload:]") @FriendlyName("DN") String dn) throws Exception
     {
-        if(LOGGER.isDebugEnabled())
+        if(logger.isDebugEnabled())
         {
-            LOGGER.debug("About to delete entry " + dn);
+            logger.debug("About to delete entry " + dn);
         }
         
         this.connection.deleteEntry(dn);
         
-        if(LOGGER.isInfoEnabled())
+        if(logger.isInfoEnabled())
         {
-            LOGGER.info("Deleted entry " + dn);
+            logger.info("Deleted entry " + dn);
         }        
     }
     
@@ -1166,16 +1174,16 @@ public class LDAPConnector
     @InvalidateConnectionOn(exception = CommunicationException.class)
     public void rename(@Placement(order = 1) @FriendlyName("Current DN") String oldDn, @Placement(order = 2) @FriendlyName("New DN") String newDn) throws Exception
     {
-        if(LOGGER.isDebugEnabled())
+        if(logger.isDebugEnabled())
         {
-            LOGGER.debug("About to rename entry " + oldDn + " to " + newDn);
+            logger.debug("About to rename entry " + oldDn + " to " + newDn);
         }
         
         this.connection.renameEntry(oldDn, newDn);
         
-        if(LOGGER.isInfoEnabled())
+        if(logger.isInfoEnabled())
         {
-            LOGGER.info("Renamed entry " + oldDn + " to " + newDn);
+            logger.info("Renamed entry " + oldDn + " to " + newDn);
         }          
     }
     
@@ -1202,16 +1210,16 @@ public class LDAPConnector
     @InvalidateConnectionOn(exception = CommunicationException.class)
     public void addSingleValueAttribute(@FriendlyName("DN") String dn, String attributeName, String attributeValue) throws Exception
     {
-        if(LOGGER.isDebugEnabled())
+        if(logger.isDebugEnabled())
         {
-            LOGGER.debug("About to add attribute " + attributeName + " with value " + attributeValue + " to entry " + dn);
+            logger.debug("About to add attribute " + attributeName + " with value " + attributeValue + " to entry " + dn);
         }
         
         this.connection.addAttribute(dn, new LDAPSingleValueEntryAttribute(attributeName, attributeValue));
         
-        if(LOGGER.isInfoEnabled())
+        if(logger.isInfoEnabled())
         {
-            LOGGER.info("Added attribute " + attributeName + " with value " + attributeValue + " to entry " + dn);
+            logger.info("Added attribute " + attributeName + " with value " + attributeValue + " to entry " + dn);
         }           
     }
     
@@ -1235,16 +1243,16 @@ public class LDAPConnector
     @InvalidateConnectionOn(exception = CommunicationException.class)
     public void addMultiValueAttribute(@FriendlyName("DN") String dn, String attributeName, List<Object> attributeValues) throws Exception
     {
-        if(LOGGER.isDebugEnabled())
+        if(logger.isDebugEnabled())
         {
-            LOGGER.debug("About to add attribute " + attributeName + " with values " + attributeValues + " to entry " + dn);
+            logger.debug("About to add attribute " + attributeName + " with values " + attributeValues + " to entry " + dn);
         }
         
         this.connection.addAttribute(dn, new LDAPMultiValueEntryAttribute(attributeName, attributeValues));
         
-        if(LOGGER.isInfoEnabled())
+        if(logger.isInfoEnabled())
         {
-            LOGGER.info("Added attribute " + attributeName + " with values " + attributeValues + " to entry " + dn);
+            logger.info("Added attribute " + attributeName + " with values " + attributeValues + " to entry " + dn);
         }         
     }
 
@@ -1269,16 +1277,16 @@ public class LDAPConnector
     @InvalidateConnectionOn(exception = CommunicationException.class)
     public void modifySingleValueAttribute(@FriendlyName("DN") String dn, String attributeName, String attributeValue) throws Exception
     {
-        if(LOGGER.isDebugEnabled())
+        if(logger.isDebugEnabled())
         {
-            LOGGER.debug("About to update attribute " + attributeName + " with value " + attributeValue + " to entry " + dn);
+            logger.debug("About to update attribute " + attributeName + " with value " + attributeValue + " to entry " + dn);
         }
         
         this.connection.updateAttribute(dn, new LDAPSingleValueEntryAttribute(attributeName, attributeValue));
         
-        if(LOGGER.isInfoEnabled())
+        if(logger.isInfoEnabled())
         {
-            LOGGER.info("Updated attribute " + attributeName + " with value " + attributeValue + " to entry " + dn);
+            logger.info("Updated attribute " + attributeName + " with value " + attributeValue + " to entry " + dn);
         }         
     }
     
@@ -1300,16 +1308,16 @@ public class LDAPConnector
     @InvalidateConnectionOn(exception = CommunicationException.class)
     public void modifyMultiValueAttribute(@FriendlyName("DN") String dn, String attributeName, List<Object> attributeValues) throws Exception
     {
-        if(LOGGER.isDebugEnabled())
+        if(logger.isDebugEnabled())
         {
-            LOGGER.debug("About to modify attribute " + attributeName + " with values " + attributeValues + " to entry " + dn);
+            logger.debug("About to modify attribute " + attributeName + " with values " + attributeValues + " to entry " + dn);
         }
         
         this.connection.updateAttribute(dn, new LDAPMultiValueEntryAttribute(attributeName, attributeValues));
         
-        if(LOGGER.isInfoEnabled())
+        if(logger.isInfoEnabled())
         {
-            LOGGER.info("Modified attribute " + attributeName + " with values " + attributeValues + " to entry " + dn);
+            logger.info("Modified attribute " + attributeName + " with values " + attributeValues + " to entry " + dn);
         }          
     }
     
@@ -1334,22 +1342,22 @@ public class LDAPConnector
     @InvalidateConnectionOn(exception = CommunicationException.class)
     public void deleteSingleValueAttribute(@FriendlyName("DN") String dn, String attributeName, @Optional String attributeValue) throws Exception
     {
-        if(LOGGER.isDebugEnabled())
+        if(logger.isDebugEnabled())
         {
-            LOGGER.debug("About to delete value " + attributeValue + " from attribute " + attributeName + " on entry " + dn);
+            logger.debug("About to delete value " + attributeValue + " from attribute " + attributeName + " on entry " + dn);
         }
         
         this.connection.deleteAttribute(dn, new LDAPSingleValueEntryAttribute(attributeName, attributeValue));
         
-        if(LOGGER.isInfoEnabled())
+        if(logger.isInfoEnabled())
         {
             if(attributeValue != null && attributeValue.length() > 0)
             {
-                LOGGER.info("Deleted value " + attributeValue + " from attribute " + attributeName + " from entry " + dn);
+                logger.info("Deleted value " + attributeValue + " from attribute " + attributeName + " from entry " + dn);
             }
             else
             {
-                LOGGER.info("Deleted attribute " + attributeName + " from entry " + dn);
+                logger.info("Deleted attribute " + attributeName + " from entry " + dn);
             }
         }          
         
@@ -1373,16 +1381,16 @@ public class LDAPConnector
     @InvalidateConnectionOn(exception = CommunicationException.class)
     public void deleteMultiValueAttribute(@FriendlyName("DN") String dn, String attributeName, @Optional List<Object> attributeValues) throws Exception
     {
-        if(LOGGER.isDebugEnabled())
+        if(logger.isDebugEnabled())
         {
-            LOGGER.debug("About to delete values " + attributeValues + " from attribute " + attributeName + " on entry " + dn);
+            logger.debug("About to delete values " + attributeValues + " from attribute " + attributeName + " on entry " + dn);
         }
         
         this.connection.deleteAttribute(dn, new LDAPMultiValueEntryAttribute(attributeName, attributeValues));
         
-        if(LOGGER.isInfoEnabled())
+        if(logger.isInfoEnabled())
         {
-            LOGGER.info("Deleted values " + attributeValues + " from attribute " + attributeName + " on entry " + dn);
+            logger.info("Deleted values " + attributeValues + " from attribute " + attributeName + " on entry " + dn);
         }          
     }
     
@@ -1413,10 +1421,6 @@ public class LDAPConnector
     @Transformer(sourceTypes = {Map.class})
     public static LDAPEntry mapToLdapEntry(Map<String, Object> entry) throws Exception
     {
-        if(LOGGER.isDebugEnabled())
-        {
-            LOGGER.debug("mapToLdapEntry transformer. About to transform map " + entry);
-        }         
         return new LDAPEntry(entry);
     }
 
@@ -1438,10 +1442,6 @@ public class LDAPConnector
     @Transformer(sourceTypes = {LDAPEntry.class})
     public static Map<String, Object> ldapEntryToMap(LDAPEntry entry)
     {
-        if(LOGGER.isDebugEnabled())
-        {
-            LOGGER.debug("ldapEntryToMap transformer. About to transform entry " + entry);
-        }         
         return entry != null ? entry.toMap() : null;
     }
     
@@ -1456,11 +1456,6 @@ public class LDAPConnector
     @Transformer(sourceTypes = {LDAPEntry.class})
     public static String ldapEntryToLdif(LDAPEntry entry)
     {
-        if(LOGGER.isDebugEnabled())
-        {
-            LOGGER.debug("ldapEntryToLdif transformer. About to transform entry " + entry);
-        }         
-        
         return entry != null ? entry.toLDIFString() : null;
     }
     

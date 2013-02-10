@@ -210,23 +210,25 @@ public class LDAPJNDIConnection extends LDAPConnection
         StringBuilder conf = new StringBuilder();
 
         conf.append("{");
-        conf.append("name: " + getName() + ", ");
-        conf.append("provider_url: " + getProviderUrl() + ", ");
-        conf.append("initial_ctx_factory: " + getInitialContextFactory() + ", ");
-        conf.append("auth: " + getAuthentication() + ", ");
+        conf.append("url: " + getProviderUrl() + ", ");
+        conf.append("authentication: " + getAuthentication() + ", ");
         if (!isNoAuthentication() && StringUtils.isNotEmpty(bindDn))
         {
-            conf.append("bindDn: " + bindDn + ", ");
+            conf.append("authDn: " + bindDn + ", ");
         }
         else
         {
-            conf.append("bindDn: {anonymous}, ");
-        }        
+            conf.append("authDn: {anonymous}, ");
+        }
+        
+        conf.append("initialContextFactory: " + getInitialContextFactory() + ", ");
+        conf.append("referral: " + getReferral() + ", ");
+
         if (isConnectionPoolEnabled())
         {
-            conf.append("init_pool_conns: " + getInitialPoolSizeConnections() + ", ");
-            conf.append("max_pool_conns: " + getMaxPoolConnections() + ", ");
-            conf.append("pool_timeout: " + getPoolTimeout());
+            conf.append("initialPoolSize: " + getInitialPoolSizeConnections() + ", ");
+            conf.append("maxPoolSize: " + getMaxPoolConnections() + ", ");
+            conf.append("poolTimeout: " + getPoolTimeout());
         }
         else
         {
@@ -331,6 +333,11 @@ public class LDAPJNDIConnection extends LDAPConnection
         if(extendedEnvironment != null && extendedEnvironment.size() > 0)
         {
             env.putAll(extendedEnvironment);
+        }
+        
+        if(logger.isDebugEnabled())
+        {
+            logger.debug("Created environment: " + env);
         }
         
         return env;
@@ -541,7 +548,14 @@ public class LDAPJNDIConnection extends LDAPConnection
     
     private LDAPException handleNamingException(NamingException nex, String logMessage)
     {
-        logger.error(logMessage, nex);
+        if(logger.isDebugEnabled())
+        {
+            logger.debug(logMessage, nex);
+        }
+        else
+        {
+            logger.warn(logMessage);
+        }
         
         return LDAPException.create(nex);
     }
