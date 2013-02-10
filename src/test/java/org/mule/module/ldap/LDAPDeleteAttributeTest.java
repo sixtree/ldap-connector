@@ -78,6 +78,7 @@ public class LDAPDeleteAttributeTest extends AbstractLDAPConnectorTest
         params.put("attributeName", "description");
         params.put("attributeValue", "Doesn't matter");
         
+        // This test is returning with LDAP error Code 80 (LDAP_OTHER) so it is mapped to CommunicationException
         Throwable ex = runFlowWithPayloadAndExpectException("testDeleteSingleAttributeFlow", CommunicationException.class, params);
         
         assertEquals(ex.getCause().getClass(), NamingException.class);
