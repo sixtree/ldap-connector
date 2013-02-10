@@ -23,7 +23,6 @@ import javax.naming.NamingException;
 import org.junit.Test;
 import org.mule.module.ldap.api.CommunicationException;
 import org.mule.module.ldap.api.LDAPEntry;
-import org.mule.module.ldap.api.LDAPException;
 
 public class LDAPDeleteAttributeTest extends AbstractLDAPConnectorTest
 {
@@ -79,7 +78,7 @@ public class LDAPDeleteAttributeTest extends AbstractLDAPConnectorTest
         params.put("attributeName", "description");
         params.put("attributeValue", "Doesn't matter");
         
-        Throwable ex = runFlowWithPayloadAndExpectException("testDeleteSingleAttributeFlow", LDAPException.class, params);
+        Throwable ex = runFlowWithPayloadAndExpectException("testDeleteSingleAttributeFlow", CommunicationException.class, params);
         
         assertEquals(ex.getCause().getClass(), NamingException.class);
     }
