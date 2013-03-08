@@ -24,7 +24,7 @@ import org.junit.Test;
 import org.mule.module.ldap.api.CommunicationException;
 import org.mule.module.ldap.api.LDAPEntry;
 
-public class LDAPDeleteAttributeTest extends AbstractLDAPConnectorTest
+public class LDAPDeleteAttributeTest extends AbstractLDAPConnectorEmbeddedLDAPTest
 {
     /**
      * 

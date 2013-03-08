@@ -22,8 +22,6 @@ import java.util.Map;
 
 import javax.naming.NamingException;
 
-import org.apache.log4j.Logger;
-
 /**
  * This class is the abstraction
  * 
@@ -52,6 +50,7 @@ public class LDAPException extends Exception
         EX_MAPPINGS.put(javax.naming.directory.AttributeInUseException.class, InvalidAttributeException.class);
         EX_MAPPINGS.put(javax.naming.ContextNotEmptyException.class, ContextNotEmptyException.class);
         EX_MAPPINGS.put(javax.naming.ServiceUnavailableException.class, CommunicationException.class);
+        EX_MAPPINGS.put(javax.naming.directory.NoSuchAttributeException.class, InvalidAttributeException.class);
         // Cause reconnection with any unrecognized exception (For example read time out)
         EX_MAPPINGS.put(javax.naming.NamingException.class, CommunicationException.class);
     }

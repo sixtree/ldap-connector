@@ -20,7 +20,7 @@ import org.mule.module.ldap.api.InvalidEntryException;
 import org.mule.module.ldap.api.LDAPEntry;
 import org.mule.module.ldap.api.NameNotFoundException;
 
-public class LDAPModifyTest extends AbstractLDAPConnectorTest
+public class LDAPModifyTest extends AbstractLDAPConnectorEmbeddedLDAPTest
 {
     /**
      * 

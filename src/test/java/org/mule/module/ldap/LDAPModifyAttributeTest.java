@@ -21,7 +21,7 @@ import org.junit.Test;
 import org.mule.module.ldap.api.LDAPEntry;
 import org.mule.module.ldap.api.NameNotFoundException;
 
-public class LDAPModifyAttributeTest extends AbstractLDAPConnectorTest
+public class LDAPModifyAttributeTest extends AbstractLDAPConnectorEmbeddedLDAPTest
 {
     /**
      * 

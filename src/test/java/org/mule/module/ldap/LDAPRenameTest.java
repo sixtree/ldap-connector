@@ -17,7 +17,7 @@ import org.junit.Test;
 import org.mule.module.ldap.api.LDAPEntry;
 import org.mule.module.ldap.api.NameNotFoundException;
 
-public class LDAPRenameTest extends AbstractLDAPConnectorTest
+public class LDAPRenameTest extends AbstractLDAPConnectorEmbeddedLDAPTest
 {
     /**
      * 

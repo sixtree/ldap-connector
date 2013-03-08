@@ -22,7 +22,7 @@ import org.mule.api.ConnectionExceptionCode;
 import org.mule.module.ldap.api.LDAPEntry;
 import org.mule.transport.NullPayload;
 
-public class LDAPBindTest extends AbstractLDAPConnectorTest
+public class LDAPBindTest extends AbstractLDAPConnectorEmbeddedLDAPTest
 {
 
     /**

@@ -270,11 +270,11 @@ public class LDAPJNDIConnection extends LDAPConnection
             try
             {
                 getConn().close();
-                logger.info("Connection closed.");
+                logger.info("Connection " + toString() + " closed.");
             }
             catch (NamingException nex)
             {
-                throw handleNamingException(nex, "Close connection failed.");
+                throw handleNamingException(nex, "Close connection " + toString() + " failed.");
             } 
             finally
             {
@@ -903,7 +903,8 @@ public class LDAPJNDIConnection extends LDAPConnection
     {
         try
         {
-            return getBindedUserDn() + "@" + getProviderUrl();
+            String user = getBindedUserDn();
+            return (user != null ? user : "anonymous") + "@" + getProviderUrl();
         }
         catch(Throwable ex)
         {

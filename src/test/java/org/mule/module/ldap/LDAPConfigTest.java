@@ -10,7 +10,7 @@ package org.mule.module.ldap;
 
 import org.junit.Test;
 
-public class LDAPConfigTest extends AbstractLDAPConnectorTest
+public class LDAPConfigTest extends AbstractLDAPConnectorEmbeddedLDAPTest
 {
 
     /**

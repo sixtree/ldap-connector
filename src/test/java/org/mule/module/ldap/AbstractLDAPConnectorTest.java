@@ -11,47 +11,13 @@ package org.mule.module.ldap;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
-import java.io.File;
-
-import org.apache.directory.server.core.schema.SchemaInterceptor;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
 import org.mule.api.MessagingException;
 import org.mule.api.MuleEvent;
 import org.mule.construct.Flow;
 import org.mule.tck.junit4.FunctionalTestCase;
-import org.mule.util.FileUtils;
-import org.springframework.security.ldap.server.ApacheDSContainer;
 
 public abstract class AbstractLDAPConnectorTest extends FunctionalTestCase
 {
-    private static ApacheDSContainer ldapServer;
-    public static int LDAP_PORT = 10389;
-    public static File WORKING_DIRECTORY = new File(System.getProperty("java.io.tmpdir") + File.separator + "ldap-connector-junit-server");
-    
-    @BeforeClass
-    public static void startLdapServer() throws Exception {
-        FileUtils.deleteDirectory(WORKING_DIRECTORY);
-        
-        ldapServer = new ApacheDSContainer("dc=mulesoft,dc=org", "classpath:test-server.ldif");
-        ldapServer.setWorkingDirectory(WORKING_DIRECTORY);
-        ldapServer.setPort(LDAP_PORT);
-        ldapServer.getService().setAllowAnonymousAccess(true);
-        ldapServer.getService().setAccessControlEnabled(true);
-        ldapServer.getService().setShutdownHookEnabled(true);
-        
-        ldapServer.getService().getInterceptors().add(new SchemaInterceptor());
-        ldapServer.afterPropertiesSet(); // This method calls start
-        ldapServer.getService().getSchemaService().getRegistries();
-    }
-
-    @AfterClass
-    public static void stopLdapServer() throws Exception {
-        if (ldapServer != null) {
-            ldapServer.stop();
-        }
-    }    
-    
     /**
      * Run the flow specified by name using the specified payload and assert
      * equality on the expected output

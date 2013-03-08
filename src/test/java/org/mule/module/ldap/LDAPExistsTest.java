@@ -14,7 +14,7 @@ import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 import org.mule.module.ldap.api.NameNotFoundException;
 
-public class LDAPExistsTest extends AbstractLDAPConnectorTest
+public class LDAPExistsTest extends AbstractLDAPConnectorEmbeddedLDAPTest
 {
 
     /**

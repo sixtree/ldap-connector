@@ -14,7 +14,7 @@ import org.junit.Test;
 import org.mule.module.ldap.api.ContextNotEmptyException;
 import org.mule.module.ldap.api.NameNotFoundException;
 
-public class LDAPDeleteTest extends AbstractLDAPConnectorTest
+public class LDAPDeleteTest extends AbstractLDAPConnectorEmbeddedLDAPTest
 {
     /**
      * 

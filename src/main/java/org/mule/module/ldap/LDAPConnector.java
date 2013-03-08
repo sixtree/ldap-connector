@@ -36,6 +36,7 @@ import org.mule.api.callback.SourceCallback;
 import org.mule.module.ldap.api.AuthenticationException;
 import org.mule.module.ldap.api.CommunicationException;
 import org.mule.module.ldap.api.ContextNotEmptyException;
+import org.mule.module.ldap.api.InvalidAttributeException;
 import org.mule.module.ldap.api.LDAPConnection;
 import org.mule.module.ldap.api.LDAPEntry;
 import org.mule.module.ldap.api.LDAPException;
@@ -1333,22 +1334,37 @@ public class LDAPConnector
      * @param dn The DN of the LDAP entry to modify
      * @param attributeName The name of the attribute to delete its value.
      * @param attributeValue The value that should be deleted.
+     * @param ignoreInvalidAttribute If the attribute or value to delete is no present, then don't throw {@link org.mule.module.ldap.api.InvalidAttributeException}
      * @throws org.mule.module.ldap.api.NoPermissionException If the current binded user has no permissions to update the entry.
      * @throws org.mule.module.ldap.api.NameNotFoundException If there is no existing entry for the given DN.
+     * @throws org.mule.module.ldap.api.InvalidAttributeException If the entry doesn't have the attribute or value that should be deleted. Ignored if ignoreInvalidAttribute is true. <i>Note</i>: Not every LDAP server will through this exception.
      * @throws org.mule.module.ldap.api.LDAPException In case there is any other exception, mainly related to connectivity problems or referrals.
      * @throws Exception In case there is any other error updating the entry.
      */
     @Processor
     @InvalidateConnectionOn(exception = CommunicationException.class)
-    public void deleteSingleValueAttribute(@FriendlyName("DN") String dn, String attributeName, @Optional String attributeValue) throws Exception
+    public void deleteSingleValueAttribute(@FriendlyName("DN") String dn, String attributeName, @Optional String attributeValue, @Optional @Default("false") boolean ignoreInvalidAttribute) throws Exception
     {
         if(logger.isDebugEnabled())
         {
             logger.debug("About to delete value " + attributeValue + " from attribute " + attributeName + " on entry " + dn);
         }
         
-        this.connection.deleteAttribute(dn, new LDAPSingleValueEntryAttribute(attributeName, attributeValue));
-        
+        try
+        {
+            this.connection.deleteAttribute(dn, new LDAPSingleValueEntryAttribute(attributeName, attributeValue));
+        }
+        catch(InvalidAttributeException iaex)
+        {
+            if(!ignoreInvalidAttribute)
+            {
+                throw iaex;
+            }
+            else
+            {
+                logger.info("Ignoring attribute deletion. " + iaex.getMessage());
+            }
+        }        
         if(logger.isInfoEnabled())
         {
             if(attributeValue != null && attributeValue.length() > 0)
@@ -1372,21 +1388,37 @@ public class LDAPConnector
      * @param dn The DN of the LDAP entry to modify
      * @param attributeName The name of the attribute to delete its values.
      * @param attributeValues The values that should be deleted.
+     * @param ignoreInvalidAttribute If the attribute or value to delete is no present, then don't throw {@link org.mule.module.ldap.api.InvalidAttributeException}
      * @throws org.mule.module.ldap.api.NoPermissionException If the current binded user has no permissions to update the entry.
      * @throws org.mule.module.ldap.api.NameNotFoundException If there is no existing entry for the given DN.
+     * @throws org.mule.module.ldap.api.InvalidAttributeException If the entry doesn't have the attribute or value that should be deleted. Ignored if ignoreInvalidAttribute is true. <i>Note</i>: Not every LDAP server will through this exception.
      * @throws org.mule.module.ldap.api.LDAPException In case there is any other exception, mainly related to connectivity problems or referrals.
      * @throws Exception In case there is any other error updating the entry.
      */
     @Processor
     @InvalidateConnectionOn(exception = CommunicationException.class)
-    public void deleteMultiValueAttribute(@FriendlyName("DN") String dn, String attributeName, @Optional List<Object> attributeValues) throws Exception
+    public void deleteMultiValueAttribute(@FriendlyName("DN") String dn, String attributeName, @Optional List<Object> attributeValues, @Optional @Default("false") boolean ignoreInvalidAttribute) throws Exception
     {
         if(logger.isDebugEnabled())
         {
             logger.debug("About to delete values " + attributeValues + " from attribute " + attributeName + " on entry " + dn);
         }
         
-        this.connection.deleteAttribute(dn, new LDAPMultiValueEntryAttribute(attributeName, attributeValues));
+        try
+        {
+            this.connection.deleteAttribute(dn, new LDAPMultiValueEntryAttribute(attributeName, attributeValues));
+        }
+        catch(InvalidAttributeException iaex)
+        {
+            if(!ignoreInvalidAttribute)
+            {
+                throw iaex;
+            }
+            else
+            {
+                logger.info("Ignoring attribute deletion. " + iaex.getMessage());
+            }
+        }
         
         if(logger.isInfoEnabled())
         {

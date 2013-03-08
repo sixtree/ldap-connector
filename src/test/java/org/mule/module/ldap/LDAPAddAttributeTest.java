@@ -22,7 +22,7 @@ import org.mule.module.ldap.api.InvalidAttributeException;
 import org.mule.module.ldap.api.LDAPEntry;
 import org.mule.module.ldap.api.NameNotFoundException;
 
-public class LDAPAddAttributeTest extends AbstractLDAPConnectorTest
+public class LDAPAddAttributeTest extends AbstractLDAPConnectorEmbeddedLDAPTest
 {
     /**
      * 
