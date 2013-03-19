@@ -1201,22 +1201,38 @@ public class LDAPConnector
      * @param dn The DN of the LDAP entry to modify
      * @param attributeName The name of the attribute to add a value to.
      * @param attributeValue The value for the attribute
+     * @param ignoreInvalidAttribute If the attribute value to add is already present, then don't throw {@link org.mule.module.ldap.api.InvalidAttributeException}
      * @throws org.mule.module.ldap.api.NoPermissionException If the current binded user has no permissions to update the entry.
      * @throws org.mule.module.ldap.api.InvalidAttributeException If the attribute value is invalid or the entry already has the provided value.
      * @throws org.mule.module.ldap.api.NameNotFoundException If there is no existing entry for the given DN.
+     * @throws org.mule.module.ldap.api.InvalidAttributeException If the entry does have the attribute value that should be added. Ignored if ignoreInvalidAttribute is true. <i>Note</i>: Not every LDAP server will through this exception.
      * @throws org.mule.module.ldap.api.LDAPException In case there is any other exception, mainly related to connectivity problems or referrals.
      * @throws Exception In case there is any other error updating the entry.
      */
     @Processor
     @InvalidateConnectionOn(exception = CommunicationException.class)
-    public void addSingleValueAttribute(@FriendlyName("DN") String dn, String attributeName, String attributeValue) throws Exception
+    public void addSingleValueAttribute(@FriendlyName("DN") String dn, String attributeName, String attributeValue, @Optional @Default("false") boolean ignoreInvalidAttribute) throws Exception
     {
         if(logger.isDebugEnabled())
         {
             logger.debug("About to add attribute " + attributeName + " with value " + attributeValue + " to entry " + dn);
         }
         
-        this.connection.addAttribute(dn, new LDAPSingleValueEntryAttribute(attributeName, attributeValue));
+        try
+        {
+            this.connection.addAttribute(dn, new LDAPSingleValueEntryAttribute(attributeName, attributeValue));
+        }
+        catch(InvalidAttributeException iaex)
+        {
+            if(!ignoreInvalidAttribute)
+            {
+                throw iaex;
+            }
+            else
+            {
+                logger.info("Ignoring attribute addition. " + iaex.getMessage());
+            }
+        }
         
         if(logger.isInfoEnabled())
         {
@@ -1234,23 +1250,39 @@ public class LDAPConnector
      * @param dn The DN of the LDAP entry to modify
      * @param attributeName The name of the attribute to add values to.
      * @param attributeValues The values for the attribute
+     * @param ignoreInvalidAttribute If the attribute value to add is already present, then don't throw {@link org.mule.module.ldap.api.InvalidAttributeException}
      * @throws org.mule.module.ldap.api.NoPermissionException If the current binded user has no permissions to update the entry.
      * @throws org.mule.module.ldap.api.NameNotFoundException If there is no existing entry for the given DN.
      * @throws org.mule.module.ldap.api.InvalidAttributeException If the attribute value is invalid or the entry already has the provided value.
+     * @throws org.mule.module.ldap.api.InvalidAttributeException If the entry does have the attribute value that should be added. Ignored if ignoreInvalidAttribute is true. <i>Note</i>: Not every LDAP server will through this exception.
      * @throws org.mule.module.ldap.api.LDAPException In case there is any other exception, mainly related to connectivity problems or referrals.
      * @throws Exception In case there is any other error updating the entry.
      */
     @Processor
     @InvalidateConnectionOn(exception = CommunicationException.class)
-    public void addMultiValueAttribute(@FriendlyName("DN") String dn, String attributeName, List<Object> attributeValues) throws Exception
+    public void addMultiValueAttribute(@FriendlyName("DN") String dn, String attributeName, List<Object> attributeValues, @Optional @Default("false") boolean ignoreInvalidAttribute) throws Exception
     {
         if(logger.isDebugEnabled())
         {
             logger.debug("About to add attribute " + attributeName + " with values " + attributeValues + " to entry " + dn);
         }
         
-        this.connection.addAttribute(dn, new LDAPMultiValueEntryAttribute(attributeName, attributeValues));
-        
+        try
+        {
+            this.connection.addAttribute(dn, new LDAPMultiValueEntryAttribute(attributeName, attributeValues));
+        }
+        catch(InvalidAttributeException iaex)
+        {
+            if(!ignoreInvalidAttribute)
+            {
+                throw iaex;
+            }
+            else
+            {
+                logger.info("Ignoring attribute addition. " + iaex.getMessage());
+            }
+        }
+    
         if(logger.isInfoEnabled())
         {
             logger.info("Added attribute " + attributeName + " with values " + attributeValues + " to entry " + dn);
@@ -1269,21 +1301,37 @@ public class LDAPConnector
      * @param dn The DN of the LDAP entry to modify
      * @param attributeName The name of the attribute to update its value.
      * @param attributeValue The new value for the attribute
+     * @param ignoreInvalidAttribute If the attribute value to modify is already present, then don't throw {@link org.mule.module.ldap.api.InvalidAttributeException}
      * @throws org.mule.module.ldap.api.NoPermissionException If the current binded user has no permissions to update the entry.
      * @throws org.mule.module.ldap.api.NameNotFoundException If there is no existing entry for the given DN.
+     * @throws org.mule.module.ldap.api.InvalidAttributeException If the entry does have the attribute value that should be modified. Ignored if ignoreInvalidAttribute is true. <i>Note</i>: Not every LDAP server will through this exception.
      * @throws org.mule.module.ldap.api.LDAPException In case there is any other exception, mainly related to connectivity problems or referrals.
      * @throws Exception In case there is any other error updating the entry.
      */
     @Processor
     @InvalidateConnectionOn(exception = CommunicationException.class)
-    public void modifySingleValueAttribute(@FriendlyName("DN") String dn, String attributeName, String attributeValue) throws Exception
+    public void modifySingleValueAttribute(@FriendlyName("DN") String dn, String attributeName, String attributeValue, @Optional @Default("false") boolean ignoreInvalidAttribute) throws Exception
     {
         if(logger.isDebugEnabled())
         {
             logger.debug("About to update attribute " + attributeName + " with value " + attributeValue + " to entry " + dn);
         }
         
-        this.connection.updateAttribute(dn, new LDAPSingleValueEntryAttribute(attributeName, attributeValue));
+        try
+        {
+            this.connection.updateAttribute(dn, new LDAPSingleValueEntryAttribute(attributeName, attributeValue));
+        }
+        catch(InvalidAttributeException iaex)
+        {
+            if(!ignoreInvalidAttribute)
+            {
+                throw iaex;
+            }
+            else
+            {
+                logger.info("Ignoring attribute modification. " + iaex.getMessage());
+            }
+        }
         
         if(logger.isInfoEnabled())
         {
@@ -1300,21 +1348,37 @@ public class LDAPConnector
      * @param dn The DN of the LDAP entry to modify
      * @param attributeName The name of the attribute to update its values.
      * @param attributeValues The new values for the attribute
+     * @param ignoreInvalidAttribute If the attribute value to modify is already present, then don't throw {@link org.mule.module.ldap.api.InvalidAttributeException}
      * @throws org.mule.module.ldap.api.NoPermissionException If the current binded user has no permissions to update the entry.
      * @throws org.mule.module.ldap.api.NameNotFoundException If there is no existing entry for the given DN.
+     * @throws org.mule.module.ldap.api.InvalidAttributeException If the entry does have the attribute value that should be modified. Ignored if ignoreInvalidAttribute is true. <i>Note</i>: Not every LDAP server will through this exception.
      * @throws org.mule.module.ldap.api.LDAPException In case there is any other exception, mainly related to connectivity problems or referrals.
      * @throws Exception In case there is any other error updating the entry.
      */
     @Processor
     @InvalidateConnectionOn(exception = CommunicationException.class)
-    public void modifyMultiValueAttribute(@FriendlyName("DN") String dn, String attributeName, List<Object> attributeValues) throws Exception
+    public void modifyMultiValueAttribute(@FriendlyName("DN") String dn, String attributeName, List<Object> attributeValues, @Optional @Default("false") boolean ignoreInvalidAttribute) throws Exception
     {
         if(logger.isDebugEnabled())
         {
             logger.debug("About to modify attribute " + attributeName + " with values " + attributeValues + " to entry " + dn);
         }
         
-        this.connection.updateAttribute(dn, new LDAPMultiValueEntryAttribute(attributeName, attributeValues));
+        try
+        {
+            this.connection.updateAttribute(dn, new LDAPMultiValueEntryAttribute(attributeName, attributeValues));
+        }
+        catch(InvalidAttributeException iaex)
+        {
+            if(!ignoreInvalidAttribute)
+            {
+                throw iaex;
+            }
+            else
+            {
+                logger.info("Ignoring attribute modification. " + iaex.getMessage());
+            }
+        }
         
         if(logger.isInfoEnabled())
         {
