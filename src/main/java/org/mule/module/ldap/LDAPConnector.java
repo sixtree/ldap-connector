@@ -167,7 +167,7 @@ import org.mule.util.StringUtils;
  *
  * @author Mariano Capurro (MuleSoft, Inc.)
  */
-@Connector(name = "ldap", schemaVersion = "3.4", friendlyName="LDAP", minMuleVersion="3.3.2", description="LDAP Connector that allows you to connect to any LDAP server and perform every LDAP operation")
+@Connector(name = "ldap", schemaVersion = "3.4", friendlyName="LDAP", minMuleVersion="3.4", description="LDAP Connector that allows you to connect to any LDAP server and perform every LDAP operation")
 //:TODO: New in DevKit Version 3.3.x -> Move component from CC Category. For example -> @Category(name = "org.mule.tooling.category.security", description = "Security")
 public class LDAPConnector
 {
