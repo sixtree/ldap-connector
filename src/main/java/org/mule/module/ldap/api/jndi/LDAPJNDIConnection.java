@@ -267,19 +267,25 @@ public class LDAPJNDIConnection extends LDAPConnection
     {
         if (getConn() != null)
         {
+            String connectionId = toString();
             try
             {
+                
                 getConn().close();
-                logger.info("Connection " + toString() + " closed.");
+                logger.info("Connection " + connectionId + " closed.");
             }
             catch (NamingException nex)
             {
-                throw handleNamingException(nex, "Close connection " + toString() + " failed.");
+                throw handleNamingException(nex, "Close connection " + connectionId + " failed.");
             } 
             finally
             {
                 setConn(null);
             }
+        } 
+        else
+        {
+            logger.warn("Cannot close a null connection");
         }
     }
 
