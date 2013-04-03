@@ -12,12 +12,12 @@ import static org.junit.Assert.assertEquals;
 
 import org.junit.Ignore;
 import org.junit.Test;
-import org.mule.module.ldap.ldap.api.InvalidAttributeException;
-import org.mule.module.ldap.ldap.api.InvalidEntryException;
-import org.mule.module.ldap.ldap.api.LDAPEntry;
-import org.mule.module.ldap.ldap.api.NameAlreadyBoundException;
+import org.mule.module.ldap.api.InvalidAttributeException;
+import org.mule.module.ldap.api.InvalidEntryException;
+import org.mule.module.ldap.api.LDAPEntry;
+import org.mule.module.ldap.api.NameAlreadyBoundException;
 
-public class LDAPAddTest extends AbstractLDAPConnectorTest
+public class LDAPAddTest extends AbstractLDAPConnectorEmbeddedLDAPTest
 {
 
     /**
