@@ -1,0 +1,572 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<mule-configuration xmlns="http://www.mulesoft.com/tooling/messageflow" name="LDAP-demo">
+    <global-element type="http://www.mulesoft.org/schema/mule/ldap/config" name="LDAP" entity-id="LDAP#1">
+        <properties>
+            <property value="adminConf" name="name"/>
+            <property value="1" name="auxiliary;index"/>
+            <property value="${ldap.authDn}" name="authDn"/>
+            <property value="${ldap.password}" name="authPassword"/>
+            <property name="authentication"/>
+            <property value="${ldap.url}" name="url"/>
+            <property value="1" name="auxiliary;index"/>
+            <property name="type"/>
+            <property value="1" name="auxiliary;index"/>
+            <property name="initialPoolSize"/>
+            <property name="maxPoolSize"/>
+            <property name="poolTimeout"/>
+            <property value="1" name="auxiliary;index"/>
+            <property name="referral"/>
+            <property value="1" name="auxiliary;index"/>
+            <property value="1" name="auxiliary;index"/>
+            <property value="1" name="auxiliary;index"/>
+            <property value="1" name="auxiliary;index"/>
+            <property value="1" name="auxiliary;index"/>
+            <property value="1" name="auxiliary;index"/>
+            <property value="1" name="auxiliary;index"/>
+            <property-collection name="@http://www.mulesoft.org/schema/mule/ldap/configurable-extended-configurations;0">
+                <property value="2" name="auxiliary;wrapIn"/>
+                <property value="2" name="auxiliary;index"/>
+                <property-collection name="@http://www.mulesoft.org/schema/mule/ldap/configurable-extended-configuration;1">
+                    <property value="org.mule.module.ldap.security.BypassTrustSSLSocketFactory" name="value"/>
+                    <property value="3" name="auxiliary;wrapIn"/>
+                    <property value="3" name="auxiliary;index"/>
+                    <property value="java.naming.ldap.factory.socket" name="key"/>
+                </property-collection>
+            </property-collection>
+        </properties>
+    </global-element>
+    <global-element type="http://www.mulesoft.org/schema/mule/ldap/config" name="LDAP" entity-id="LDAP#2">
+        <properties>
+            <property value="anonymousConf" name="name"/>
+            <property value="4" name="auxiliary;index"/>
+            <property value="ANONYMOUS" name="authDn"/>
+            <property name="authPassword"/>
+            <property value="none" name="authentication"/>
+            <property value="${ldap.url}" name="url"/>
+            <property value="4" name="auxiliary;index"/>
+            <property name="type"/>
+            <property value="4" name="auxiliary;index"/>
+            <property name="initialPoolSize"/>
+            <property name="maxPoolSize"/>
+            <property name="poolTimeout"/>
+            <property value="4" name="auxiliary;index"/>
+            <property name="referral"/>
+            <property value="4" name="auxiliary;index"/>
+            <property value="4" name="auxiliary;index"/>
+            <property value="4" name="auxiliary;index"/>
+            <property value="4" name="auxiliary;index"/>
+            <property value="4" name="auxiliary;index"/>
+            <property value="4" name="auxiliary;index"/>
+            <property value="4" name="auxiliary;index"/>
+        </properties>
+    </global-element>
+    <flow SubFlow="false" name="testAddSingleAttributeFlow" entity-id="927e3724-cb3c-4d97-ab68-672dd39beba4">
+        <properties>
+            <property name="processingStrategy2"/>
+            <property name="processingStrategy"/>
+            <property value="5" name="auxiliary;index"/>
+            <property name="bussinessEventsLabel"/>
+            <property name="tracking:enable-default-events"/>
+            <property value="5" name="auxiliary;index"/>
+            <property value="5" name="auxiliary;index"/>
+            <property value="5" name="auxiliary;index"/>
+        </properties>
+        <lane isChoiceOtherwiseLane="false" index="0" hadOnlyOneElement="false" entity-id="compartment-lane#1">
+            <endpoint message-exchange-pattern="OneWay" direction="Inbound" type="http://www.mulesoft.org/schema/mule/http/endpoint" name="HTTP" entity-id="HTTP#1">
+                <properties>
+                    <property value="one-way" name="exchange-pattern"/>
+                    <property value="request-response" name="exchange-pattern"/>
+                    <property value="6" name="auxiliary;index"/>
+                    <property value="http://www.mulesoft.org/schema/mule/http/endpoint" name="org.mule.tooling.ui.modules.core.widgets.meta.ModeAttribute"/>
+                    <property value="6" name="auxiliary;index"/>
+                    <property name="httpLabel"/>
+                    <property value="localhost" name="host"/>
+                    <property value="8081" name="port"/>
+                    <property value="addSingleAttribute" name="path"/>
+                    <property name="method"/>
+                    <property value="6" name="auxiliary;index"/>
+                    <property value="6" name="auxiliary;index"/>
+                    <property name="businessEventsLabel"/>
+                    <property name="tracking:enable-default-events"/>
+                    <property value="6" name="auxiliary;index"/>
+                    <property name="address"/>
+                    <property name="encoding"/>
+                    <property name="disableTransportTransformer"/>
+                    <property name="mimeType"/>
+                    <property name="responseTimeout"/>
+                    <property name="followRedirects"/>
+                    <property value="6" name="auxiliary;index"/>
+                    <property value="6" name="auxiliary;index"/>
+                    <property value="6" name="auxiliary;index"/>
+                    <property name="connector-ref"/>
+                    <property name="ref"/>
+                    <property name="transformer-refs"/>
+                    <property name="responseTransformer-refs"/>
+                    <property value="6" name="auxiliary;index"/>
+                    <property value="6" name="auxiliary;index"/>
+                    <property name="user"/>
+                    <property name="password"/>
+                    <property value="6" name="auxiliary;index"/>
+                    <property name="contentType"/>
+                    <property name="keep-alive"/>
+                    <property value="6" name="auxiliary;index"/>
+                    <property value="6" name="auxiliary;index"/>
+                    <property value="6" name="auxiliary;index"/>
+                </properties>
+            </endpoint>
+            <pattern type="http://www.mulesoft.org/schema/mule/ldap/ldap-connector" name="LDAP" entity-id="LDAP#3">
+                <properties>
+                    <property value="adminConf" name="config-ref"/>
+                    <property value="http://www.mulesoft.org/schema/mule/ldap/add-single-value-attribute" name="org.mule.tooling.ui.modules.core.widgets.meta.ModeAttribute"/>
+                    <property value="adminConf" name="config-ref"/>
+                    <property value="7" name="auxiliary;index"/>
+                    <property value="#[message.inboundProperties['dn']]" name="dn"/>
+                    <property value="description" name="attributeName"/>
+                    <property value="Description for TestUser" name="attributeValue"/>
+                    <property name="ignoreInvalidAttribute"/>
+                    <property value="7" name="auxiliary;index"/>
+                    <property value="7" name="auxiliary;index"/>
+                    <property name=""/>
+                    <property name="authDn"/>
+                    <property name="authPassword"/>
+                    <property name="authentication"/>
+                    <property value="7" name="auxiliary;index"/>
+                    <property value="7" name="auxiliary;index"/>
+                    <property value="7" name="auxiliary;index"/>
+                    <property value="7" name="auxiliary;index"/>
+                    <property value="7" name="auxiliary;index"/>
+                    <property value="7" name="auxiliary;index"/>
+                    <property value="7" name="auxiliary;index"/>
+                </properties>
+            </pattern>
+            <pattern type="http://www.mulesoft.org/schema/mule/ldap/ldap-connector" name="LDAP" entity-id="LDAP#4">
+                <properties>
+                    <property value="adminConf" name="config-ref"/>
+                    <property value="http://www.mulesoft.org/schema/mule/ldap/lookup" name="org.mule.tooling.ui.modules.core.widgets.meta.ModeAttribute"/>
+                    <property value="adminConf" name="config-ref"/>
+                    <property value="8" name="auxiliary;index"/>
+                    <property value="#[message.inboundProperties['dn']]" name="dn"/>
+                    <property value="8" name="auxiliary;index"/>
+                    <property value="8" name="auxiliary;index"/>
+                    <property name=""/>
+                    <property name="authDn"/>
+                    <property name="authPassword"/>
+                    <property name="authentication"/>
+                    <property value="8" name="auxiliary;index"/>
+                    <property value="8" name="auxiliary;index"/>
+                    <property value="8" name="auxiliary;index"/>
+                    <property value="8" name="auxiliary;index"/>
+                    <property value="8" name="auxiliary;index"/>
+                    <property value="8" name="auxiliary;index"/>
+                    <property value="8" name="auxiliary;index"/>
+                </properties>
+            </pattern>
+            <pattern type="http://www.mulesoft.org/schema/mule/json/object-to-json-transformer" name="Object to JSON" entity-id="Object to JSON#1">
+                <properties>
+                    <property name="returnClass"/>
+                    <property name="ignoreBadInput"/>
+                    <property name="encoding"/>
+                    <property value="9" name="auxiliary;index"/>
+                    <property name="mimeType"/>
+                    <property value="9" name="auxiliary;index"/>
+                    <property value="9" name="auxiliary;index"/>
+                    <property name="mapper-ref"/>
+                    <property name="sourceClass"/>
+                    <property value="9" name="auxiliary;index"/>
+                    <property value="9" name="auxiliary;index"/>
+                    <property value="9" name="auxiliary;index"/>
+                </properties>
+            </pattern>
+        </lane>
+    </flow>
+    <flow SubFlow="false" name="testAddMultiAttributeFlow" entity-id="c4a508b8-ce56-436a-b021-d472eaab7a9e">
+        <properties>
+            <property name="processingStrategy2"/>
+            <property name="processingStrategy"/>
+            <property value="10" name="auxiliary;index"/>
+            <property name="bussinessEventsLabel"/>
+            <property name="tracking:enable-default-events"/>
+            <property value="10" name="auxiliary;index"/>
+            <property value="10" name="auxiliary;index"/>
+            <property value="10" name="auxiliary;index"/>
+        </properties>
+        <lane isChoiceOtherwiseLane="false" index="0" hadOnlyOneElement="false" entity-id="compartment-lane#2">
+            <endpoint message-exchange-pattern="OneWay" direction="Inbound" type="http://www.mulesoft.org/schema/mule/http/endpoint" name="HTTP" entity-id="HTTP#2">
+                <properties>
+                    <property value="one-way" name="exchange-pattern"/>
+                    <property value="request-response" name="exchange-pattern"/>
+                    <property value="11" name="auxiliary;index"/>
+                    <property value="http://www.mulesoft.org/schema/mule/http/endpoint" name="org.mule.tooling.ui.modules.core.widgets.meta.ModeAttribute"/>
+                    <property value="11" name="auxiliary;index"/>
+                    <property name="httpLabel"/>
+                    <property value="localhost" name="host"/>
+                    <property value="8081" name="port"/>
+                    <property value="addMultiAttribute" name="path"/>
+                    <property name="method"/>
+                    <property value="11" name="auxiliary;index"/>
+                    <property value="11" name="auxiliary;index"/>
+                    <property name="businessEventsLabel"/>
+                    <property name="tracking:enable-default-events"/>
+                    <property value="11" name="auxiliary;index"/>
+                    <property name="address"/>
+                    <property name="encoding"/>
+                    <property name="disableTransportTransformer"/>
+                    <property name="mimeType"/>
+                    <property name="responseTimeout"/>
+                    <property name="followRedirects"/>
+                    <property value="11" name="auxiliary;index"/>
+                    <property value="11" name="auxiliary;index"/>
+                    <property value="11" name="auxiliary;index"/>
+                    <property name="connector-ref"/>
+                    <property name="ref"/>
+                    <property name="transformer-refs"/>
+                    <property name="responseTransformer-refs"/>
+                    <property value="11" name="auxiliary;index"/>
+                    <property value="11" name="auxiliary;index"/>
+                    <property name="user"/>
+                    <property name="password"/>
+                    <property value="11" name="auxiliary;index"/>
+                    <property name="contentType"/>
+                    <property name="keep-alive"/>
+                    <property value="11" name="auxiliary;index"/>
+                    <property value="11" name="auxiliary;index"/>
+                    <property value="11" name="auxiliary;index"/>
+                </properties>
+            </endpoint>
+            <pattern type="http://www.mulesoft.org/schema/mule/ldap/ldap-connector" name="LDAP" entity-id="LDAP#5">
+                <properties>
+                    <property value="adminConf" name="config-ref"/>
+                    <property value="http://www.mulesoft.org/schema/mule/ldap/add-multi-value-attribute" name="org.mule.tooling.ui.modules.core.widgets.meta.ModeAttribute"/>
+                    <property value="adminConf" name="config-ref"/>
+                    <property value="12" name="auxiliary;index"/>
+                    <property value="#[message.inboundProperties['dn']]" name="dn"/>
+                    <property value="mail" name="attributeName"/>
+                    <property name="ignoreInvalidAttribute"/>
+                    <property value="12" name="auxiliary;index"/>
+                    <property value="12" name="auxiliary;index"/>
+                    <property name=""/>
+                    <property name="authDn"/>
+                    <property name="authPassword"/>
+                    <property name="authentication"/>
+                    <property value="12" name="auxiliary;index"/>
+                    <property value="12" name="auxiliary;index"/>
+                    <property value="12" name="auxiliary;index"/>
+                    <property value="12" name="auxiliary;index"/>
+                    <property value="12" name="auxiliary;index"/>
+                    <property value="12" name="auxiliary;index"/>
+                    <property value="12" name="auxiliary;index"/>
+                    <property-collection name="@http://www.mulesoft.org/schema/mule/ldap/add-multi-value-attribute-attribute-valuess;0">
+                        <property value="#[groovy:['user1@email2.com','user1@email1.com']]" name="ref"/>
+                        <property value="13" name="auxiliary;wrapIn"/>
+                        <property value="13" name="auxiliary;index"/>
+                    </property-collection>
+                </properties>
+            </pattern>
+            <pattern type="http://www.mulesoft.org/schema/mule/ldap/ldap-connector" name="LDAP" entity-id="LDAP#6">
+                <properties>
+                    <property value="adminConf" name="config-ref"/>
+                    <property value="http://www.mulesoft.org/schema/mule/ldap/lookup" name="org.mule.tooling.ui.modules.core.widgets.meta.ModeAttribute"/>
+                    <property value="adminConf" name="config-ref"/>
+                    <property value="14" name="auxiliary;index"/>
+                    <property value="#[message.inboundProperties['dn']]" name="dn"/>
+                    <property value="14" name="auxiliary;index"/>
+                    <property value="14" name="auxiliary;index"/>
+                    <property name=""/>
+                    <property name="authDn"/>
+                    <property name="authPassword"/>
+                    <property name="authentication"/>
+                    <property value="14" name="auxiliary;index"/>
+                    <property value="14" name="auxiliary;index"/>
+                    <property value="14" name="auxiliary;index"/>
+                    <property value="14" name="auxiliary;index"/>
+                    <property value="14" name="auxiliary;index"/>
+                    <property value="14" name="auxiliary;index"/>
+                    <property value="14" name="auxiliary;index"/>
+                </properties>
+            </pattern>
+            <pattern type="http://www.mulesoft.org/schema/mule/json/object-to-json-transformer" name="Object to JSON" entity-id="Object to JSON#2">
+                <properties>
+                    <property name="returnClass"/>
+                    <property name="ignoreBadInput"/>
+                    <property name="encoding"/>
+                    <property value="15" name="auxiliary;index"/>
+                    <property name="mimeType"/>
+                    <property value="15" name="auxiliary;index"/>
+                    <property value="15" name="auxiliary;index"/>
+                    <property name="mapper-ref"/>
+                    <property name="sourceClass"/>
+                    <property value="15" name="auxiliary;index"/>
+                    <property value="15" name="auxiliary;index"/>
+                    <property value="15" name="auxiliary;index"/>
+                </properties>
+            </pattern>
+        </lane>
+    </flow>
+    <flow SubFlow="false" name="testAddEntryFlow" entity-id="3518856f-0bce-40c3-9056-b233a902c2fc">
+        <properties>
+            <property name="processingStrategy2"/>
+            <property name="processingStrategy"/>
+            <property value="16" name="auxiliary;index"/>
+            <property name="bussinessEventsLabel"/>
+            <property name="tracking:enable-default-events"/>
+            <property value="16" name="auxiliary;index"/>
+            <property value="16" name="auxiliary;index"/>
+            <property value="16" name="auxiliary;index"/>
+        </properties>
+        <lane isChoiceOtherwiseLane="false" index="0" hadOnlyOneElement="false" entity-id="compartment-lane#3">
+            <endpoint message-exchange-pattern="OneWay" direction="Inbound" type="http://www.mulesoft.org/schema/mule/http/endpoint" name="HTTP" entity-id="HTTP#3">
+                <properties>
+                    <property value="one-way" name="exchange-pattern"/>
+                    <property value="request-response" name="exchange-pattern"/>
+                    <property value="17" name="auxiliary;index"/>
+                    <property value="http://www.mulesoft.org/schema/mule/http/endpoint" name="org.mule.tooling.ui.modules.core.widgets.meta.ModeAttribute"/>
+                    <property value="17" name="auxiliary;index"/>
+                    <property name="httpLabel"/>
+                    <property value="localhost" name="host"/>
+                    <property value="8081" name="port"/>
+                    <property value="addEntry" name="path"/>
+                    <property name="method"/>
+                    <property value="17" name="auxiliary;index"/>
+                    <property value="17" name="auxiliary;index"/>
+                    <property name="businessEventsLabel"/>
+                    <property name="tracking:enable-default-events"/>
+                    <property value="17" name="auxiliary;index"/>
+                    <property name="address"/>
+                    <property name="encoding"/>
+                    <property name="disableTransportTransformer"/>
+                    <property name="mimeType"/>
+                    <property name="responseTimeout"/>
+                    <property name="followRedirects"/>
+                    <property value="17" name="auxiliary;index"/>
+                    <property value="17" name="auxiliary;index"/>
+                    <property value="17" name="auxiliary;index"/>
+                    <property name="connector-ref"/>
+                    <property name="ref"/>
+                    <property name="transformer-refs"/>
+                    <property name="responseTransformer-refs"/>
+                    <property value="17" name="auxiliary;index"/>
+                    <property value="17" name="auxiliary;index"/>
+                    <property name="user"/>
+                    <property name="password"/>
+                    <property value="17" name="auxiliary;index"/>
+                    <property name="contentType"/>
+                    <property name="keep-alive"/>
+                    <property value="17" name="auxiliary;index"/>
+                    <property value="17" name="auxiliary;index"/>
+                    <property value="17" name="auxiliary;index"/>
+                </properties>
+            </endpoint>
+            <pattern type="http://www.mulesoft.org/schema/mule/scripting/groovyTransformer" name="Groovy" entity-id="Groovy#1">
+                <properties>
+                    <property name="returnClass"/>
+                    <property name="ignoreBadInput"/>
+                    <property name="encoding"/>
+                    <property value="18" name="auxiliary;index"/>
+                    <property name="mimeType"/>
+                    <property value="18" name="auxiliary;index"/>
+                    <property value="18" name="auxiliary;index"/>
+                    <property value="18" name="auxiliary;index"/>
+                    <property value="18" name="auxiliary;index"/>
+                    <property value="18" name="auxiliary;index"/>
+                    <property value="18" name="auxiliary;index"/>
+                    <property-collection name="@http://www.mulesoft.org/schema/mule/scripting/script-for-properties;0">
+                        <property value="import org.mule.module.ldap.api.LDAPEntry;&#xA;&#xA;LDAPEntry entryToAdd = new LDAPEntry(message.getInboundProperty('dn'));&#xA;entryToAdd.addAttribute(&quot;uid&quot;, message.getInboundProperty('uid'));&#xA;entryToAdd.addAttribute(&quot;cn&quot;, &quot;Test User&quot;);&#xA;entryToAdd.addAttribute(&quot;sn&quot;, &quot;User&quot;);&#xA;entryToAdd.addAttribute(&quot;userPassword&quot;, &quot;test1234&quot;);&#xA;entryToAdd.addAttribute(&quot;objectclass&quot;, [&quot;top&quot;, &quot;person&quot;, &quot;organizationalPerson&quot;, &quot;inetOrgPerson&quot;]);&#xA;&#xA;return entryToAdd" name="text"/>
+                        <property value="Groovy" name="engine"/>
+                        <property value="19" name="auxiliary;wrapIn"/>
+                        <property value="19" name="auxiliary;index"/>
+                    </property-collection>
+                    <property-collection name="@http://www.mulesoft.org/schema/mule/scripting/script;0">
+                        <property value="import org.mule.module.ldap.api.LDAPEntry;&#xA;&#xA;LDAPEntry entryToAdd = new LDAPEntry(message.getInboundProperty('dn'));&#xA;entryToAdd.addAttribute(&quot;uid&quot;, message.getInboundProperty('uid'));&#xA;entryToAdd.addAttribute(&quot;cn&quot;, &quot;Test User&quot;);&#xA;entryToAdd.addAttribute(&quot;sn&quot;, &quot;User&quot;);&#xA;entryToAdd.addAttribute(&quot;userPassword&quot;, &quot;test1234&quot;);&#xA;entryToAdd.addAttribute(&quot;objectclass&quot;, [&quot;top&quot;, &quot;person&quot;, &quot;organizationalPerson&quot;, &quot;inetOrgPerson&quot;]);&#xA;&#xA;return entryToAdd" name="text"/>
+                        <property value="Groovy" name="engine"/>
+                        <property value="19" name="auxiliary;wrapIn"/>
+                        <property value="19" name="auxiliary;index"/>
+                    </property-collection>
+                </properties>
+            </pattern>
+            <pattern type="http://www.mulesoft.org/schema/mule/ldap/ldap-connector" name="LDAP" entity-id="LDAP#7">
+                <properties>
+                    <property value="adminConf" name="config-ref"/>
+                    <property value="http://www.mulesoft.org/schema/mule/ldap/add" name="org.mule.tooling.ui.modules.core.widgets.meta.ModeAttribute"/>
+                    <property value="adminConf" name="config-ref"/>
+                    <property value="21" name="auxiliary;index"/>
+                    <property value="21" name="auxiliary;index"/>
+                    <property value="21" name="auxiliary;index"/>
+                    <property name=""/>
+                    <property name="authDn"/>
+                    <property name="authPassword"/>
+                    <property name="authentication"/>
+                    <property value="21" name="auxiliary;index"/>
+                    <property value="21" name="auxiliary;index"/>
+                    <property value="21" name="auxiliary;index"/>
+                    <property value="21" name="auxiliary;index"/>
+                    <property value="21" name="auxiliary;index"/>
+                    <property value="21" name="auxiliary;index"/>
+                    <property value="21" name="auxiliary;index"/>
+                    <property-collection name="@http://www.mulesoft.org/schema/mule/ldap/entry;0">
+                        <property value="#[payload:]" name="ref"/>
+                        <property value="22" name="auxiliary;wrapIn"/>
+                        <property value="22" name="auxiliary;index"/>
+                    </property-collection>
+                </properties>
+            </pattern>
+            <pattern type="http://www.mulesoft.org/schema/mule/ldap/ldap-connector" name="LDAP" entity-id="LDAP#8">
+                <properties>
+                    <property value="adminConf" name="config-ref"/>
+                    <property value="http://www.mulesoft.org/schema/mule/ldap/lookup" name="org.mule.tooling.ui.modules.core.widgets.meta.ModeAttribute"/>
+                    <property value="adminConf" name="config-ref"/>
+                    <property value="23" name="auxiliary;index"/>
+                    <property value="#[groovy:payload.getDn()]" name="dn"/>
+                    <property value="23" name="auxiliary;index"/>
+                    <property value="23" name="auxiliary;index"/>
+                    <property name=""/>
+                    <property name="authDn"/>
+                    <property name="authPassword"/>
+                    <property name="authentication"/>
+                    <property value="23" name="auxiliary;index"/>
+                    <property value="23" name="auxiliary;index"/>
+                    <property value="23" name="auxiliary;index"/>
+                    <property value="23" name="auxiliary;index"/>
+                    <property value="23" name="auxiliary;index"/>
+                    <property value="23" name="auxiliary;index"/>
+                    <property value="23" name="auxiliary;index"/>
+                </properties>
+            </pattern>
+            <pattern type="http://www.mulesoft.org/schema/mule/json/object-to-json-transformer" name="Object to JSON" entity-id="Object to JSON#3">
+                <properties>
+                    <property name="returnClass"/>
+                    <property name="ignoreBadInput"/>
+                    <property name="encoding"/>
+                    <property value="24" name="auxiliary;index"/>
+                    <property name="mimeType"/>
+                    <property value="24" name="auxiliary;index"/>
+                    <property value="24" name="auxiliary;index"/>
+                    <property name="mapper-ref"/>
+                    <property name="sourceClass"/>
+                    <property value="24" name="auxiliary;index"/>
+                    <property value="24" name="auxiliary;index"/>
+                    <property value="24" name="auxiliary;index"/>
+                </properties>
+            </pattern>
+        </lane>
+    </flow>
+    <flow SubFlow="false" name="testDeleteSingleAttributeFlow" entity-id="9c9a0e80-9dff-40a2-889f-61b33ecae5ef">
+        <properties>
+            <property name="processingStrategy2"/>
+            <property name="processingStrategy"/>
+            <property value="25" name="auxiliary;index"/>
+            <property name="bussinessEventsLabel"/>
+            <property name="tracking:enable-default-events"/>
+            <property value="25" name="auxiliary;index"/>
+            <property value="25" name="auxiliary;index"/>
+            <property value="25" name="auxiliary;index"/>
+        </properties>
+        <lane isChoiceOtherwiseLane="false" index="0" hadOnlyOneElement="false" entity-id="compartment-lane#4">
+            <endpoint message-exchange-pattern="OneWay" direction="Inbound" type="http://www.mulesoft.org/schema/mule/http/endpoint" name="HTTP" entity-id="HTTP#4">
+                <properties>
+                    <property value="one-way" name="exchange-pattern"/>
+                    <property value="request-response" name="exchange-pattern"/>
+                    <property value="26" name="auxiliary;index"/>
+                    <property value="http://www.mulesoft.org/schema/mule/http/endpoint" name="org.mule.tooling.ui.modules.core.widgets.meta.ModeAttribute"/>
+                    <property value="26" name="auxiliary;index"/>
+                    <property name="httpLabel"/>
+                    <property value="localhost" name="host"/>
+                    <property value="8081" name="port"/>
+                    <property value="deleteSingleAttribute" name="path"/>
+                    <property name="method"/>
+                    <property value="26" name="auxiliary;index"/>
+                    <property value="26" name="auxiliary;index"/>
+                    <property name="businessEventsLabel"/>
+                    <property name="tracking:enable-default-events"/>
+                    <property value="26" name="auxiliary;index"/>
+                    <property name="address"/>
+                    <property name="encoding"/>
+                    <property name="disableTransportTransformer"/>
+                    <property name="mimeType"/>
+                    <property name="responseTimeout"/>
+                    <property name="followRedirects"/>
+                    <property value="26" name="auxiliary;index"/>
+                    <property value="26" name="auxiliary;index"/>
+                    <property value="26" name="auxiliary;index"/>
+                    <property name="connector-ref"/>
+                    <property name="ref"/>
+                    <property name="transformer-refs"/>
+                    <property name="responseTransformer-refs"/>
+                    <property value="26" name="auxiliary;index"/>
+                    <property value="26" name="auxiliary;index"/>
+                    <property name="user"/>
+                    <property name="password"/>
+                    <property value="26" name="auxiliary;index"/>
+                    <property name="contentType"/>
+                    <property name="keep-alive"/>
+                    <property value="26" name="auxiliary;index"/>
+                    <property value="26" name="auxiliary;index"/>
+                    <property value="26" name="auxiliary;index"/>
+                </properties>
+            </endpoint>
+            <pattern type="http://www.mulesoft.org/schema/mule/ldap/ldap-connector" name="LDAP" entity-id="LDAP#9">
+                <properties>
+                    <property value="adminConf" name="config-ref"/>
+                    <property value="http://www.mulesoft.org/schema/mule/ldap/delete-single-value-attribute" name="org.mule.tooling.ui.modules.core.widgets.meta.ModeAttribute"/>
+                    <property value="adminConf" name="config-ref"/>
+                    <property value="27" name="auxiliary;index"/>
+                    <property value="#[message.inboundProperties['dn']]" name="dn"/>
+                    <property value="description" name="attributeName"/>
+                    <property name="attributeValue"/>
+                    <property name="ignoreInvalidAttribute"/>
+                    <property value="27" name="auxiliary;index"/>
+                    <property value="27" name="auxiliary;index"/>
+                    <property name=""/>
+                    <property name="authDn"/>
+                    <property name="authPassword"/>
+                    <property name="authentication"/>
+                    <property value="27" name="auxiliary;index"/>
+                    <property value="27" name="auxiliary;index"/>
+                    <property value="27" name="auxiliary;index"/>
+                    <property value="27" name="auxiliary;index"/>
+                    <property value="27" name="auxiliary;index"/>
+                    <property value="27" name="auxiliary;index"/>
+                    <property value="27" name="auxiliary;index"/>
+                </properties>
+            </pattern>
+            <pattern type="http://www.mulesoft.org/schema/mule/ldap/ldap-connector" name="LDAP" entity-id="LDAP#10">
+                <properties>
+                    <property value="adminConf" name="config-ref"/>
+                    <property value="http://www.mulesoft.org/schema/mule/ldap/lookup" name="org.mule.tooling.ui.modules.core.widgets.meta.ModeAttribute"/>
+                    <property value="adminConf" name="config-ref"/>
+                    <property value="28" name="auxiliary;index"/>
+                    <property value="#[message.inboundProperties['dn']]" name="dn"/>
+                    <property value="28" name="auxiliary;index"/>
+                    <property value="28" name="auxiliary;index"/>
+                    <property name=""/>
+                    <property name="authDn"/>
+                    <property name="authPassword"/>
+                    <property name="authentication"/>
+                    <property value="28" name="auxiliary;index"/>
+                    <property value="28" name="auxiliary;index"/>
+                    <property value="28" name="auxiliary;index"/>
+                    <property value="28" name="auxiliary;index"/>
+                    <property value="28" name="auxiliary;index"/>
+                    <property value="28" name="auxiliary;index"/>
+                    <property value="28" name="auxiliary;index"/>
+                </properties>
+            </pattern>
+            <pattern type="http://www.mulesoft.org/schema/mule/json/object-to-json-transformer" name="Object to JSON" entity-id="Object to JSON#4">
+                <properties>
+                    <property name="returnClass"/>
+                    <property name="ignoreBadInput"/>
+                    <property name="encoding"/>
+                    <property value="29" name="auxiliary;index"/>
+                    <property name="mimeType"/>
+                    <property value="29" name="auxiliary;index"/>
+                    <property value="29" name="auxiliary;index"/>
+                    <property name="mapper-ref"/>
+                    <property name="sourceClass"/>
+                    <property value="29" name="auxiliary;index"/>
+                    <property value="29" name="auxiliary;index"/>
+                    <property value="29" name="auxiliary;index"/>
+                </properties>
+            </pattern>
+        </lane>
+    </flow>
+    <description></description>
+</mule-configuration>

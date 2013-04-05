@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting" xmlns:json="http://www.mulesoft.org/schema/mule/json" xmlns:ldap="http://www.mulesoft.org/schema/mule/ldap" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:spring="http://www.springframework.org/schema/beans" version="EE-3.3.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd 
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd 
+http://www.mulesoft.org/schema/mule/ldap http://www.mulesoft.org/schema/mule/ldap/3.3/mule-ldap.xsd 
+http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mule/scripting/current/mule-scripting.xsd 
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd 
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd ">
+	<ldap:config name="adminConf" url="${ldap.url}" authDn="${ldap.authDn}" authPassword="${ldap.password}" doc:name="LDAP">
+        <ldap:extended-configuration>
+            <ldap:extended-configuration key="java.naming.ldap.factory.socket">org.mule.module.ldap.security.BypassTrustSSLSocketFactory</ldap:extended-configuration>
+        </ldap:extended-configuration>
+  	</ldap:config>
+	<ldap:config name="anonymousConf" url="${ldap.url}" authentication="none" authDn="ANONYMOUS" doc:name="LDAP"/>
+    <flow name="testAddSingleAttributeFlow" doc:name="testAddSingleAttributeFlow">
+    	<http:inbound-endpoint exchange-pattern="request-response" host="localhost" port="8081" path="addSingleAttribute" doc:name="HTTP"/>
+    	<ldap:add-single-value-attribute config-ref="adminConf" dn="#[message.inboundProperties['dn']]" attributeName="description" attributeValue="Description for TestUser" doc:name="LDAP"/>
+    	<ldap:lookup config-ref="adminConf" dn="#[message.inboundProperties['dn']]" doc:name="LDAP"/>
+    	<json:object-to-json-transformer doc:name="Object to JSON"/>
+	</flow>
+    <flow name="testAddMultiAttributeFlow" doc:name="testAddMultiAttributeFlow">
+    	<http:inbound-endpoint exchange-pattern="request-response" host="localhost" port="8081" path="addMultiAttribute" doc:name="HTTP"/>
+    	<ldap:add-multi-value-attribute config-ref="adminConf" dn="#[message.inboundProperties['dn']]" attributeName="mail" doc:name="LDAP">
+			<ldap:attribute-values ref="#[groovy:['user1@email2.com','user1@email1.com']]" />
+    	</ldap:add-multi-value-attribute>
+    	<ldap:lookup config-ref="adminConf" dn="#[message.inboundProperties['dn']]" doc:name="LDAP"/>
+    	<json:object-to-json-transformer doc:name="Object to JSON"/>
+	</flow>
+	 <flow name="testAddEntryFlow" doc:name="testAddEntryFlow">
+	    <http:inbound-endpoint exchange-pattern="request-response" host="localhost" port="8081" path="addEntry" doc:name="HTTP"/>
+        <scripting:transformer doc:name="Groovy">
+            <scripting:script engine="Groovy">
+                <scripting:text><![CDATA[import org.mule.module.ldap.api.LDAPEntry;
+
+LDAPEntry entryToAdd = new LDAPEntry(message.getInboundProperty('dn'));
+entryToAdd.addAttribute("uid", message.getInboundProperty('uid'));
+entryToAdd.addAttribute("cn", "Test User");
+entryToAdd.addAttribute("sn", "User");
+entryToAdd.addAttribute("userPassword", "test1234");
+entryToAdd.addAttribute("objectclass", ["top", "person", "organizationalPerson", "inetOrgPerson"]);
+
+return entryToAdd]]></scripting:text>
+            </scripting:script>
+        </scripting:transformer>
+    	<ldap:add config-ref="adminConf" doc:name="LDAP">
+    		<ldap:entry ref="#[payload:]"/>
+    	</ldap:add>
+    	<ldap:lookup config-ref="adminConf" dn="#[groovy:payload.getDn()]" doc:name="LDAP"/>
+    	<json:object-to-json-transformer doc:name="Object to JSON"/>
+	</flow>
+	<flow name="testDeleteSingleAttributeFlow" doc:name="testDeleteSingleAttributeFlow">
+	    <http:inbound-endpoint exchange-pattern="request-response" host="localhost" port="8081" path="deleteSingleAttribute" doc:name="HTTP"/>
+    	<ldap:delete-single-value-attribute config-ref="adminConf" dn="#[message.inboundProperties['dn']]" attributeName="description" doc:name="LDAP"/>
+    	<ldap:lookup config-ref="adminConf" dn="#[message.inboundProperties['dn']]" doc:name="LDAP"/>
+    	<json:object-to-json-transformer doc:name="Object to JSON"/>
+	</flow>
+</mule>
