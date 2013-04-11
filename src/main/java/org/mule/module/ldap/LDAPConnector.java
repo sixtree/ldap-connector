@@ -28,6 +28,7 @@ import org.mule.api.annotations.Processor;
 import org.mule.api.annotations.Transformer;
 import org.mule.api.annotations.ValidateConnection;
 import org.mule.api.annotations.display.FriendlyName;
+import org.mule.api.annotations.display.Password;
 import org.mule.api.annotations.display.Placement;
 import org.mule.api.annotations.param.ConnectionKey;
 import org.mule.api.annotations.param.Default;
@@ -166,7 +167,7 @@ import org.mule.util.StringUtils;
  *
  * @author Mariano Capurro (MuleSoft, Inc.)
  */
-@Connector(name = "ldap", schemaVersion = "3.3", friendlyName="LDAP", minMuleVersion="3.2.0", description="LDAP Connector that allows you to connect to any LDAP server and perform every LDAP operation")
+@Connector(name = "ldap", schemaVersion = "3.4", friendlyName="LDAP", minMuleVersion="3.4", description="LDAP Connector that allows you to connect to any LDAP server and perform every LDAP operation")
 //:TODO: New in DevKit Version 3.3.x -> Move component from CC Category. For example -> @Category(name = "org.mule.tooling.category.security", description = "Security")
 public class LDAPConnector
 {
@@ -263,7 +264,7 @@ public class LDAPConnector
      * @throws ConnectionException Holding one of the possible values in {@link ConnectionExceptionCode}.
      */
     @Connect
-    public void connect(@ConnectionKey @FriendlyName("Principal DN") String authDn, @Optional @FriendlyName("Password") String authPassword, @Optional String authentication) throws ConnectionException
+    public void connect(@ConnectionKey @FriendlyName("Principal DN") String authDn, @Optional @FriendlyName("Password") @Password String authPassword, @Optional String authentication) throws ConnectionException
     {
         
         authentication = authentication == null ? LDAPConnection.SIMPLE_AUTHENTICATION : authentication;
@@ -324,9 +325,10 @@ public class LDAPConnector
     @Disconnect
     public void disconnect()
     {
+        String id = connectionId();
         if(logger.isDebugEnabled())
         {
-            logger.debug("About to disconnect " + connectionId());
+            logger.debug("About to disconnect " + id);
         }
         if (this.connection != null)
         {
@@ -336,7 +338,7 @@ public class LDAPConnector
             }
             catch (LDAPException ex)
             {
-                logger.error("Unable to close connection " + connectionId() + ". Forcing close anyway.", ex);
+                logger.error("Unable to close connection " + id + ". Forcing close anyway.", ex);
             }
             finally
             {
@@ -427,7 +429,15 @@ public class LDAPConnector
                 logger.debug("About to retrieve authenticated user entry for: " + dn);
             }
             
-            entry = this.connection.lookup(dn);
+            try
+            {
+                entry = this.connection.lookup(dn);
+            }
+            catch(LDAPException ex)
+            {
+                // In some cases like Active Directory the DN will be an email address: username@domain
+                logger.warn("Cannot retrieve entry for dn: " + dn, ex);
+            }
 
             if(logger.isDebugEnabled())
             {
@@ -1626,5 +1636,4 @@ public class LDAPConnector
     {
         this.extendedConfiguration = extendedConfiguration;
     }
-
 }
