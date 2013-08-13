@@ -126,7 +126,8 @@ public class PagedLDAPResultSet implements LDAPResultSet
                 return LDAPJNDIUtils.buildEntry(entryDn, searchResult.getAttributes());
             }
         }
-        throw new NoSuchElementException();
+        
+        throw new NoSuchElementException("End of result set");
     }
 
     private void getNextPage() throws LDAPException
@@ -229,7 +230,7 @@ public class PagedLDAPResultSet implements LDAPResultSet
                 {
                     if (responseControls[i] instanceof PagedResultsResponseControl)
                     {
-                        PagedResultsResponseControl prrc = (PagedResultsResponseControl)responseControls[i];
+                        PagedResultsResponseControl prrc = (PagedResultsResponseControl) responseControls[i];
                         return prrc.getCookie();
                     }
                 }

@@ -95,10 +95,26 @@ public class LDAPSearchLookupTest extends AbstractLDAPConnectorEmbeddedLDAPTest
     {
         @SuppressWarnings("unchecked")
         List<Object> result = (List<Object>) runFlow("testPagedResultSearchAsyncFlow", "(uid=user*)");
-
-        //assertEquals(0, result.size());
+        
+        // Returns the same objects that were sent to the async
+        assertEquals(5, result.size());
     }
-    
+
+    @Test
+    public void testPagedResultSearchSort() throws Exception
+    {
+        @SuppressWarnings("unchecked")
+        List<Object> result = (List<Object>) runFlow("testPagedResultSearchSortFlow", "(uid=user*)");
+        
+        String sortedCns[] = {"User One", "User Two", "User Three", "User Four", "User Five"};
+        
+        assertEquals(sortedCns.length, result.size());
+        
+        for(int i=0; i < sortedCns.length; i++)
+        {
+            assertEquals(sortedCns[i], result.get(i).toString());
+        }
+    }    
 }
 
 

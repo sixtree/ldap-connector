@@ -88,7 +88,7 @@ public class SimpleLDAPResultSet implements LDAPResultSet
         }
         else
         {
-            throw new NoSuchElementException();
+            throw new NoSuchElementException("End of result set");
         }
     }
 

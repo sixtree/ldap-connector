@@ -19,8 +19,8 @@ import org.mule.tck.junit4.FunctionalTestCase;
 public abstract class AbstractLDAPConnectorTest extends FunctionalTestCase
 {
     /**
-     * Run the flow specified by name using the specified payload and assert
-     * equality on the expected output
+     * Run the flow specified by name using the specified payload and return
+     * the resulting payload.
      *
      * @param flowName The name of the flow to run
      * @param payload The payload of the input event

@@ -9,6 +9,7 @@
 package org.mule.module.ldap.api.jndi;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 import javax.naming.InvalidNameException;
@@ -20,6 +21,8 @@ import javax.naming.directory.SearchControls;
 import javax.naming.ldap.Control;
 import javax.naming.ldap.LdapName;
 import javax.naming.ldap.PagedResultsControl;
+import javax.naming.ldap.SortControl;
+import javax.naming.ldap.SortKey;
 
 import org.mule.module.ldap.api.LDAPEntry;
 import org.mule.module.ldap.api.LDAPEntryAttribute;
@@ -27,6 +30,7 @@ import org.mule.module.ldap.api.LDAPException;
 import org.mule.module.ldap.api.LDAPMultiValueEntryAttribute;
 import org.mule.module.ldap.api.LDAPSearchControls;
 import org.mule.module.ldap.api.LDAPSingleValueEntryAttribute;
+import org.mule.module.ldap.api.LDAPSortKey;
 
 public class LDAPJNDIUtils
 {
@@ -114,29 +118,46 @@ public class LDAPJNDIUtils
      */
     public static Control[] buildRequestControls(LDAPSearchControls controls, byte[] cookie) throws LDAPException
     {
+        List<Control> requestControls = new ArrayList<Control>();
         try
         {
             if(controls.isPagingEnabled())
             {
                 if(cookie != null)
                 {
-                    return new Control[] {new PagedResultsControl(controls.getPageSize(), cookie, Control.CRITICAL)};
+                    requestControls.add(new PagedResultsControl(controls.getPageSize(), cookie, Control.CRITICAL));
                 }
                 else
                 {
-                    return new Control[] {new PagedResultsControl(controls.getPageSize(), Control.CRITICAL)};
+                    requestControls.add(new PagedResultsControl(controls.getPageSize(), Control.CRITICAL));
                 }
             }
-            else
+            
+            if(controls.isSortEnabled())
             {
-                return new Control[0];
+                requestControls.add(new SortControl(buildSortKeyArray(controls.getSortKeys()), Control.CRITICAL));
             }
+
+            return requestControls.toArray(new Control[0]);
         }
         catch(IOException ex)
         {
-            throw new LDAPException("Could not create request paging controls", ex);
+            throw new LDAPException("Could not create request paging and/or sort controls", ex);
         }
     }    
+    
+    private static SortKey[] buildSortKeyArray(List<LDAPSortKey> sortKeys)
+    {
+        SortKey keys[] = new SortKey[sortKeys.size()];
+        int i = 0;
+        
+        for(LDAPSortKey key : sortKeys)
+        {
+            keys[i++] = new SortKey(key.getAttributeName(), key.isAscending(), key.getMatchingRuleID()); 
+        }
+        
+        return keys;
+    }
     
     /**
      * @param controls

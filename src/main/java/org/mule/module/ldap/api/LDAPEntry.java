@@ -67,7 +67,7 @@ public class LDAPEntry implements Serializable
         entry.put(MAP_DN_KEY, dn);
         try
         {
-            fromMap(attributes);
+            fromMap(entry);
         }
         catch(LDAPException ex)
         {

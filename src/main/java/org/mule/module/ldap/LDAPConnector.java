@@ -18,6 +18,7 @@ import java.util.Map;
 import org.apache.log4j.Logger;
 import org.mule.api.ConnectionException;
 import org.mule.api.ConnectionExceptionCode;
+import org.mule.api.annotations.Category;
 import org.mule.api.annotations.Configurable;
 import org.mule.api.annotations.Connect;
 import org.mule.api.annotations.ConnectionIdentifier;
@@ -45,6 +46,7 @@ import org.mule.module.ldap.api.LDAPMultiValueEntryAttribute;
 import org.mule.module.ldap.api.LDAPResultSet;
 import org.mule.module.ldap.api.LDAPSearchControls;
 import org.mule.module.ldap.api.LDAPSingleValueEntryAttribute;
+import org.mule.module.ldap.api.LDAPSortKey;
 import org.mule.module.ldap.api.NameNotFoundException;
 import org.mule.util.StringUtils;
 
@@ -168,7 +170,7 @@ import org.mule.util.StringUtils;
  * @author Mariano Capurro (MuleSoft, Inc.)
  */
 @Connector(name = "ldap", schemaVersion = "3.4", friendlyName="LDAP", minMuleVersion="3.4", description="LDAP Connector that allows you to connect to any LDAP server and perform every LDAP operation")
-//:TODO: New in DevKit Version 3.3.x -> Move component from CC Category. For example -> @Category(name = "org.mule.tooling.category.security", description = "Security")
+@Category(name = "org.mule.tooling.category.core", description = "Components")
 public class LDAPConnector
 {
     protected final Logger logger = Logger.getLogger(getClass());
@@ -579,7 +581,11 @@ public class LDAPConnector
      */
     @Processor
     @InvalidateConnectionOn(exception = CommunicationException.class)
-    public List<LDAPEntry> search(@FriendlyName("Base DN") String baseDn, String filter, @Optional List<String> attributes, @Optional @Default("ONE_LEVEL") SearchScope scope, @Optional @Default("0") @Placement(group = "Search Controls") int timeout, @Optional @Default("0") @Placement(group = "Search Controls") long maxResults, @Optional @Default("false") @Placement(group = "Search Controls") boolean returnObject, @Optional @Default("0") @Placement(group = "Search Controls") int pageSize) throws Exception
+    public List<LDAPEntry> search(@FriendlyName("Base DN") String baseDn, String filter, @Optional List<String> attributes,
+                                  @Optional @Default("ONE_LEVEL") SearchScope scope, @Optional @Default("0") @Placement(group = "Search Controls") int timeout,
+                                  @Optional @Default("0") @Placement(group = "Search Controls") long maxResults,
+                                  @Optional @Default("false") @Placement(group = "Search Controls") boolean returnObject,
+                                  @Optional @Default("0") @Placement(group = "Search Controls") int pageSize) throws Exception
     {
         LDAPResultSet result = null;
         try
@@ -622,7 +628,11 @@ public class LDAPConnector
     
     /**
      * Performs a LDAP search and streams result to the rest of the flow. This means that instead of returning a list with all results it partitions the LDAP
-     * search result into pages (individual entry if resultPageSize is 1) or lists of size resultPageSize.
+     * search result into pages (individual entry if <i>resultPageSize</i> is 1) or lists of size <i>resultPageSize</i>.
+     * <p/>
+     * This is an <b>intercepting</b> operation what means that for each result (individual entry if <i>resultPageSize</i> is 1 or {@link List} of <i>resultPageSize</i> size)
+     * the rest of the flow will be executed. Each of these executions will return a result that will be aggregated into a {@link List} of results.
+     * 
      * <p/>
      * For queries returning large results it is recommended to use pagination (not all LDAP servers support this or are configured to support it).
      * For that you need to provide a page size value that should be less or equal than max results (count limit). If you are getting a
@@ -661,9 +671,10 @@ public class LDAPConnector
      * @param pageSize If the LDAP server supports paging results set in this attribute the size of the page. If the pageSize is less or equals than 0, then paging will be disabled.
      * @param resultPageSize The size of the list this operation streams. If this value is less than 1, then it will be considered that the page size is 1.
      * @param resultOffset Considering the results are paged in resultPageSize pages, then this is the first page that should be retrieved.
-     * @param resultPageCount How many pages of size <i>resultPageSize</i> starting at <i>resultOffset</i> should be returned/processed. If zero (0) or less or if <i>resultPageCount</i> is greater than the total amount of pages, then all pages are returned.
+     * @param resultPageCount How many pages of size <i>resultPageSize</i> starting at <i>resultOffset</i> should be returned/processed. If zero (0) or negative, or if <i>resultPageCount</i> is greater than the total amount of pages, then all pages are returned.
      * @param orderBy Name of the LDAP attribute used to sort results.
-     * @param callback Used to stream results
+     * @param ascending If <i>orderBy</i> was set, whether to sort in ascending or descending order.
+     * @param callback Intercepting callback (stream paged results)
      * @return A list with individual results of executing the rest of flow with each results page.
      * @throws org.mule.module.ldap.api.NoPermissionException If the current binded user has no permissions to perform the search under the given base DN.
      * @throws org.mule.module.ldap.api.NameNotFoundException If base DN is invalid (for example it doesn't exist)
@@ -672,7 +683,17 @@ public class LDAPConnector
      */
     @Processor(intercepting=true)
     @InvalidateConnectionOn(exception = CommunicationException.class)
-    public List<Object> pagedResultSearch(@FriendlyName("Base DN") String baseDn, String filter, @Optional List<String> attributes, @Optional @Default("ONE_LEVEL") SearchScope scope, @Optional @Default("0") @Placement(group = "Search Controls") int timeout, @Optional @Default("0") @Placement(group = "Search Controls") long maxResults, @Optional @Default("false") @Placement(group = "Search Controls") boolean returnObject, @Optional @Default("0") @Placement(group = "Search Controls") int pageSize, @Optional @Default("1") @Placement(group = "Results Paging") int resultPageSize, @Optional @Default("0") @Placement(group = "Results Paging") int resultOffset, @Optional @Default("0") @Placement(group = "Results Paging") int resultPageCount, @Optional @Default("") @Placement(group = "Search Controls") String orderBy, SourceCallback callback) throws Exception
+    public List<Object> pagedResultSearch(@FriendlyName("Base DN") String baseDn, String filter, @Optional List<String> attributes,
+                                          @Optional @Default("ONE_LEVEL") SearchScope scope, @Optional @Default("0") @Placement(group = "Search Controls") int timeout,
+                                          @Optional @Default("0") @Placement(group = "Search Controls") long maxResults,
+                                          @Optional @Default("false") @Placement(group = "Search Controls") boolean returnObject,
+                                          @Optional @Default("0") @Placement(group = "Search Controls") int pageSize,
+                                          @Optional @Default("1") @Placement(group = "Results Paging") int resultPageSize,
+                                          @Optional @Default("0") @Placement(group = "Results Paging") int resultOffset,
+                                          @Optional @Default("0") @Placement(group = "Results Paging") int resultPageCount,
+                                          @FriendlyName("Order by attribute") @Optional @Placement(group = "Search Controls", order = 1) String orderBy,
+                                          @FriendlyName("Ascending order?") @Optional @Default("true") @Placement(group = "Search Controls", order = 2) boolean ascending,
+                                          SourceCallback callback) throws Exception
     {
         LDAPResultSet result = null;
         List<Object> flowResults = new ArrayList<Object>();
@@ -697,7 +718,10 @@ public class LDAPConnector
             controls.setScope(scope.getValue());
             controls.setReturnObject(returnObject);
             controls.setPageSize(pageSize);
-            controls.setOrderBy(orderBy);
+            if(StringUtils.isNotBlank(orderBy))
+            {
+                controls.getSortKeys().add(new LDAPSortKey(orderBy, ascending, null));
+            }
             
             result = this.connection.search(baseDn, filter, controls);
             
@@ -944,14 +968,13 @@ public class LDAPConnector
         
         if(!StringUtils.isBlank(dn))
         {
+            // DN attribute has precedence over entry DN at map level
             entryDn = dn;
         }
         else
         {
             logger.debug("DN is blank. Retrieved DN from entry map (key = " + LDAPEntry.MAP_DN_KEY + "): " + entryDn);
         }
-        
-        logger.info ( "The dn is \"" + entryDn + "\"" );
 
         if(logger.isDebugEnabled())
         {
@@ -1117,6 +1140,7 @@ public class LDAPConnector
         
         if(!StringUtils.isBlank(dn))
         {
+            // DN attribute has precedence over entry DN at map level
             entryDn = dn;
         }
         else

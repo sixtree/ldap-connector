@@ -18,6 +18,8 @@
 package org.mule.module.ldap.api;
 
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * This class is the abstraction
@@ -63,9 +65,9 @@ public class LDAPSearchControls implements Serializable
     private int pageSize = 0;
 
     /**
-     * Order by attribute name
+     * Sort keys (Determines the attributes to sort by (ascending or not)
      */
-    private String orderBy = null;
+    private List<LDAPSortKey> sortKeys = new ArrayList<LDAPSortKey>();
     
     /**
 	 * 
@@ -186,26 +188,17 @@ public class LDAPSearchControls implements Serializable
      * 
      * @return
      */
-    public String getOrderBy()
+    public boolean isSortEnabled()
     {
-        return orderBy;
+        return getSortKeys() != null && getSortKeys().size() > 0;
     }
 
     /**
      * 
-     * @param orderBy
-     */
-    public void setOrderBy(String orderBy)
-    {
-        this.orderBy = orderBy;
-    }
-    
-    /**
-     * 
      * @return
      */
-    public boolean isOrderBySet()
+    public List<LDAPSortKey> getSortKeys()
     {
-        return getOrderBy() != null;
+        return sortKeys;
     }
 }
