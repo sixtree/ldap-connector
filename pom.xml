@@ -10,9 +10,9 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.mule.modules</groupId>
 	<artifactId>mule-module-ldap</artifactId>
-	<version>1.1.5-SNAPSHOT</version>
+	<version>1.3.0-SNAPSHOT</version>
 	<packaging>mule-module</packaging>
-	<name>LDAP Connector</name>
+	<name>LDAP Connector for Mule 3.5+</name>
 
 	<properties>
 	        <category>Community</category>
