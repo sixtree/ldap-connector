@@ -48,7 +48,7 @@ public class LDAPDeleteAttributeTest extends AbstractLDAPConnectorEmbeddedLDAPTe
         params.put("attributeName", "mail");
         params.put("attributeValue", "user3@mulesoft.org");
         
-        LDAPEntry result = (LDAPEntry) runFlow("testDeleteSingleAttributeFlow", params);
+        LDAPEntry result = (LDAPEntry) runFlow("testDeleteSingleAttributeFlow", params).getMessage().getPayload();
         
         assertEquals("user3", result.getAttribute("uid").getValue());
         assertNull(result.getAttribute("mail"));
@@ -62,7 +62,7 @@ public class LDAPDeleteAttributeTest extends AbstractLDAPConnectorEmbeddedLDAPTe
         params.put("attributeName", "mail");
         params.put("attributeValue", "nonexisting@mail.com");
         
-        LDAPEntry result = (LDAPEntry) runFlow("testDeleteSingleAttributeFlow", params);
+        LDAPEntry result = (LDAPEntry) runFlow("testDeleteSingleAttributeFlow", params).getMessage().getPayload();
         
         assertEquals("user4", result.getAttribute("uid").getValue());
         assertEquals(2, result.getAttribute("mail").getValues().size());
@@ -92,7 +92,7 @@ public class LDAPDeleteAttributeTest extends AbstractLDAPConnectorEmbeddedLDAPTe
         params.put("attributeName", "description");
         params.put("attributeValue", null);
         
-        LDAPEntry result = (LDAPEntry) runFlow("testDeleteSingleAttributeWithoutValueFlow", params);
+        LDAPEntry result = (LDAPEntry) runFlow("testDeleteSingleAttributeWithoutValueFlow", params).getMessage().getPayload();
         
         assertEquals("user5", result.getAttribute("uid").getValue());
         assertNull(result.getAttribute("description"));        
@@ -110,7 +110,7 @@ public class LDAPDeleteAttributeTest extends AbstractLDAPConnectorEmbeddedLDAPTe
         params.put("attributeName", "mail");
         params.put("attributeValues", mails);
         
-        LDAPEntry result = (LDAPEntry) runFlow("testDeleteMultiAttributeFlow", params);
+        LDAPEntry result = (LDAPEntry) runFlow("testDeleteMultiAttributeFlow", params).getMessage().getPayload();
         
         assertEquals("user5", result.getAttribute("uid").getValue());
         assertEquals(3, result.getAttribute("mail").getValues().size());
@@ -149,7 +149,7 @@ public class LDAPDeleteAttributeTest extends AbstractLDAPConnectorEmbeddedLDAPTe
         params.put("attributeName", "mail");
         params.put("attributeValues", mails);
         
-        LDAPEntry result = (LDAPEntry) runFlow("testDeleteMultiAttributeFlow", params);
+        LDAPEntry result = (LDAPEntry) runFlow("testDeleteMultiAttributeFlow", params).getMessage().getPayload();
         
         assertEquals("user5", result.getAttribute("uid").getValue());
         assertEquals(2, result.getAttribute("mail").getValues().size());
@@ -166,7 +166,7 @@ public class LDAPDeleteAttributeTest extends AbstractLDAPConnectorEmbeddedLDAPTe
         params.put("attributeName", "mail");
         params.put("attributeValue", null);
         
-        LDAPEntry result = (LDAPEntry) runFlow("testDeleteMultiAttributeWithoutValuesFlow", params);
+        LDAPEntry result = (LDAPEntry) runFlow("testDeleteMultiAttributeWithoutValuesFlow", params).getMessage().getPayload();
         
         assertEquals("user5", result.getAttribute("uid").getValue());
         assertNull(result.getAttribute("mail"));        

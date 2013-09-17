@@ -41,7 +41,7 @@ public class LDAPBindTest extends AbstractLDAPConnectorEmbeddedLDAPTest
     @Test
     public void testAnonymousBind() throws Exception
     {
-        NullPayload result = (NullPayload) runFlow("testAnonymousBind", null);
+        NullPayload result = (NullPayload) runFlow("testAnonymousBind", null).getMessage().getPayload();
         
         assertEquals(NullPayload.class, result.getClass());
     }
@@ -49,7 +49,7 @@ public class LDAPBindTest extends AbstractLDAPConnectorEmbeddedLDAPTest
     @Test
     public void testConfigBind() throws Exception
     {
-        LDAPEntry result = (LDAPEntry) runFlow("testConfigBind", null);
+        LDAPEntry result = (LDAPEntry) runFlow("testConfigBind", null).getMessage().getPayload();
         
         assertEquals("admin", result.getAttribute("uid").getValue());
         assertEquals("Administrator", result.getAttribute("cn").getValue());
@@ -63,7 +63,7 @@ public class LDAPBindTest extends AbstractLDAPConnectorEmbeddedLDAPTest
         params.put("authDn", "uid=user1,ou=people,dc=mulesoft,dc=org");
         params.put("authPassword", "user1");
         
-        LDAPEntry result = (LDAPEntry) runFlow("testAuthenticationBind", params);
+        LDAPEntry result = (LDAPEntry) runFlow("testAuthenticationBind", params).getMessage().getPayload();
         
         assertNotNull(result);        
         assertEquals("user1", result.getAttribute("uid").getValue());

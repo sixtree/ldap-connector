@@ -45,7 +45,7 @@ public class LDAPModifyAttributeTest extends AbstractLDAPConnectorEmbeddedLDAPTe
         params.put("attributeName", "cn");
         params.put("attributeValue", "User One Modified");
         
-        LDAPEntry result = (LDAPEntry) runFlow("testModifySingleAttributeFlow", params);
+        LDAPEntry result = (LDAPEntry) runFlow("testModifySingleAttributeFlow", params).getMessage().getPayload();
         
         assertEquals("user1", result.getAttribute("uid").getValue());
         assertEquals(params.get("attributeValue"), result.getAttribute("cn").getValue());
@@ -60,7 +60,7 @@ public class LDAPModifyAttributeTest extends AbstractLDAPConnectorEmbeddedLDAPTe
         params.put("attributeName", "telephoneNumber");
         params.put("attributeValue", "777888999100");
         
-        LDAPEntry result = (LDAPEntry) runFlow("testModifySingleAttributeFlow", params);
+        LDAPEntry result = (LDAPEntry) runFlow("testModifySingleAttributeFlow", params).getMessage().getPayload();
         
         assertEquals("user1", result.getAttribute("uid").getValue());
         assertEquals(params.get("attributeValue"), result.getAttribute("telephoneNumber").getValue());
@@ -74,7 +74,7 @@ public class LDAPModifyAttributeTest extends AbstractLDAPConnectorEmbeddedLDAPTe
         params.put("attributeName", "mail");
         params.put("attributeValue", "user3@new.mail.com");
         
-        LDAPEntry result = (LDAPEntry) runFlow("testModifySingleAttributeFlow", params);
+        LDAPEntry result = (LDAPEntry) runFlow("testModifySingleAttributeFlow", params).getMessage().getPayload();
         
         assertEquals("user3", result.getAttribute("uid").getValue());
         assertEquals(1, result.getAttribute("mail").getValues().size());
@@ -106,7 +106,7 @@ public class LDAPModifyAttributeTest extends AbstractLDAPConnectorEmbeddedLDAPTe
         params.put("attributeName", "mail");
         params.put("attributeValues", mails);
         
-        LDAPEntry result = (LDAPEntry) runFlow("testModifyMultiAttributeFlow", params);
+        LDAPEntry result = (LDAPEntry) runFlow("testModifyMultiAttributeFlow", params).getMessage().getPayload();
         
         assertEquals("user3", result.getAttribute("uid").getValue());
         assertEquals(mails.size(), result.getAttribute("mail").getValues().size());

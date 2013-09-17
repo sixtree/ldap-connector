@@ -169,7 +169,7 @@ import org.mule.util.StringUtils;
  *
  * @author Mariano Capurro (MuleSoft, Inc.)
  */
-@Connector(name = "ldap", schemaVersion = "3.4", friendlyName="LDAP", minMuleVersion="3.4", description="LDAP Connector that allows you to connect to any LDAP server and perform every LDAP operation")
+@Connector(name = "ldap", schemaVersion = "3.5", friendlyName="LDAP", minMuleVersion="3.5", description="LDAP Connector that allows you to connect to any LDAP server and perform every LDAP operation")
 @Category(name = "org.mule.tooling.category.core", description = "Components")
 public class LDAPConnector
 {

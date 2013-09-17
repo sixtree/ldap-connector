@@ -33,7 +33,7 @@ public class LDAPDeleteTest extends AbstractLDAPConnectorEmbeddedLDAPTest
     public void testDeleteExistingEntry() throws Exception
     {
         final String dnToDelete = "uid=user1,ou=people,dc=mulesoft,dc=org";
-        String dn = (String) runFlow("testDeleteEntryFlow", dnToDelete);
+        String dn = (String) runFlow("testDeleteEntryFlow", dnToDelete).getMessage().getPayload();
         assertEquals(dnToDelete, dn);
         
         runFlowWithPayloadAndExpectException("testLookupEntryFlow", NameNotFoundException.class, dnToDelete);
@@ -42,7 +42,7 @@ public class LDAPDeleteTest extends AbstractLDAPConnectorEmbeddedLDAPTest
     @Test
     public void testDeleteNonExistingDnEntry() throws Exception
     {
-        runFlow("testDeleteEntryFlow", "uid=inexistantUserToDelete,ou=people,dc=mulesoft,dc=org");
+        runFlow("testDeleteEntryFlow", "uid=inexistantUserToDelete,ou=people,dc=mulesoft,dc=org").getMessage().getPayload();
     }
     
     @Test

@@ -38,7 +38,7 @@ public class LDAPSearchLookupTest extends AbstractLDAPConnectorEmbeddedLDAPTest
     @Test
     public void testAnonymousLookup() throws Exception
     {
-        LDAPEntry result = (LDAPEntry) runFlow("testAnonymousFlow", "uid=admin,ou=people,dc=mulesoft,dc=org");
+        LDAPEntry result = (LDAPEntry) runFlow("testAnonymousFlow", "uid=admin,ou=people,dc=mulesoft,dc=org").getMessage().getPayload();
         
         assertEquals("admin", result.getAttribute("uid").getValue());
         assertEquals("Administrator", result.getAttribute("cn").getValue());
@@ -49,7 +49,7 @@ public class LDAPSearchLookupTest extends AbstractLDAPConnectorEmbeddedLDAPTest
     public void testAdminSearch() throws Exception
     {
         @SuppressWarnings("unchecked")
-        List<LDAPEntry> result = (List<LDAPEntry>) runFlow("testAdminFlow", "(ou=people)");
+        List<LDAPEntry> result = (List<LDAPEntry>) runFlow("testAdminFlow", "(ou=people)").getMessage().getPayload();
 
         assertEquals(5, result.size());
         
@@ -65,7 +65,7 @@ public class LDAPSearchLookupTest extends AbstractLDAPConnectorEmbeddedLDAPTest
     public void testSearchMaxResults() throws Exception
     {
         @SuppressWarnings("unchecked")
-        List<LDAPEntry> result = (List<LDAPEntry>) runFlow("testSearchMaxResultsFlow", "2");
+        List<LDAPEntry> result = (List<LDAPEntry>) runFlow("testSearchMaxResultsFlow", "2").getMessage().getPayload();
         
         assertEquals(2, result.size());
     }
@@ -74,7 +74,7 @@ public class LDAPSearchLookupTest extends AbstractLDAPConnectorEmbeddedLDAPTest
     public void testPagedResultSearch() throws Exception
     {
         @SuppressWarnings("unchecked")
-        List<Object> result = (List<Object>) runFlow("testPagedResultSearchFlow", "(uid=user*)");
+        List<Object> result = (List<Object>) runFlow("testPagedResultSearchFlow", "(uid=user*)").getMessage().getPayload();
         List<String> cns = new ArrayList<String>();
         cns.add("User One");
         cns.add("User Two");
@@ -94,7 +94,7 @@ public class LDAPSearchLookupTest extends AbstractLDAPConnectorEmbeddedLDAPTest
     public void testPagedResultSearchAsync() throws Exception
     {
         @SuppressWarnings("unchecked")
-        List<Object> result = (List<Object>) runFlow("testPagedResultSearchAsyncFlow", "(uid=user*)");
+        List<Object> result = (List<Object>) runFlow("testPagedResultSearchAsyncFlow", "(uid=user*)").getMessage().getPayload();
         
         // Returns the same objects that were sent to the async
         assertEquals(5, result.size());
@@ -104,7 +104,7 @@ public class LDAPSearchLookupTest extends AbstractLDAPConnectorEmbeddedLDAPTest
     public void testPagedResultSearchSort() throws Exception
     {
         @SuppressWarnings("unchecked")
-        List<Object> result = (List<Object>) runFlow("testPagedResultSearchSortFlow", "(uid=user*)");
+        List<Object> result = (List<Object>) runFlow("testPagedResultSearchSortFlow", "(uid=user*)").getMessage().getPayload();
         
         String sortedCns[] = {"User One", "User Two", "User Three", "User Four", "User Five"};
         

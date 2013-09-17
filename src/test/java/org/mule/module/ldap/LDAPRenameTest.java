@@ -40,12 +40,12 @@ public class LDAPRenameTest extends AbstractLDAPConnectorEmbeddedLDAPTest
         params.put("oldDn", "uid=user1,ou=people,dc=mulesoft,dc=org");
         params.put("newDn", "uid=userRename,ou=people,dc=mulesoft,dc=org");
         
-        Map<String, Object> result = (Map<String, Object>) runFlow("testRenameEntryFlow", params);
+        Map<String, Object> result = (Map<String, Object>) runFlow("testRenameEntryFlow", params).getMessage().getPayload();
         assertEquals(params, result);
         
         runFlowWithPayloadAndExpectException("testLookupEntryFlow", NameNotFoundException.class, params.get("oldDn"));
         
-        LDAPEntry renamedEntry = (LDAPEntry) runFlow("testLookupEntryFlow", params.get("newDn"));
+        LDAPEntry renamedEntry = (LDAPEntry) runFlow("testLookupEntryFlow", params.get("newDn")).getMessage().getPayload();
         
         assertEquals("userRename", renamedEntry.getAttribute("uid").getValue());
         assertEquals("User One", renamedEntry.getAttribute("cn").getValue());

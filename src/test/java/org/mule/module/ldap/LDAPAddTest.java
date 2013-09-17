@@ -43,7 +43,7 @@ public class LDAPAddTest extends AbstractLDAPConnectorEmbeddedLDAPTest
         entryToAdd.addAttribute("userPassword", "test1234");
         entryToAdd.addAttribute("objectclass", new String[] {"top", "person", "organizationalPerson", "inetOrgPerson"});
         
-        LDAPEntry result = (LDAPEntry) runFlow("testAddEntryFlow", entryToAdd);
+        LDAPEntry result = (LDAPEntry) runFlow("testAddEntryFlow", entryToAdd).getMessage().getPayload();
         
         assertEquals(entryToAdd.getAttribute("uid").getValue(), result.getAttribute("uid").getValue());
         assertEquals(entryToAdd.getAttribute("cn").getValue(), result.getAttribute("cn").getValue());

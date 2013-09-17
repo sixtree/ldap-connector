@@ -45,7 +45,7 @@ public class LDAPModifyTest extends AbstractLDAPConnectorEmbeddedLDAPTest
         entryToModify.addAttribute("userPassword", "test1234");
         entryToModify.addAttribute("objectclass", new String[] {"top", "person", "organizationalPerson", "inetOrgPerson"});
         
-        LDAPEntry result = (LDAPEntry) runFlow("testModifyEntryFlow", entryToModify);
+        LDAPEntry result = (LDAPEntry) runFlow("testModifyEntryFlow", entryToModify).getMessage().getPayload();
         
         assertEquals(entryToModify.getAttribute("uid").getValue(), result.getAttribute("uid").getValue());
         assertEquals(entryToModify.getAttribute("cn").getValue(), result.getAttribute("cn").getValue());
@@ -64,7 +64,7 @@ public class LDAPModifyTest extends AbstractLDAPConnectorEmbeddedLDAPTest
         entryToModify.addAttribute("userPassword", "test1234");
         entryToModify.addAttribute("objectclass", new String[] {"top", "person", "organizationalPerson", "inetOrgPerson"});
         
-        LDAPEntry result = (LDAPEntry) runFlow("testModifyEntryFlow", entryToModify);
+        LDAPEntry result = (LDAPEntry) runFlow("testModifyEntryFlow", entryToModify).getMessage().getPayload();
         
         assertEquals(entryToModify.getAttribute("uid").getValue(), result.getAttribute("uid").getValue());
         assertEquals(entryToModify.getAttribute("cn").getValue(), result.getAttribute("cn").getValue());
@@ -83,7 +83,7 @@ public class LDAPModifyTest extends AbstractLDAPConnectorEmbeddedLDAPTest
         entryToModify.addAttribute("userPassword", "test1234");
         entryToModify.addAttribute("objectclass", new String[] {"top", "person", "organizationalPerson", "inetOrgPerson"});
         
-        LDAPEntry result = (LDAPEntry) runFlow("testModifyEntryFlow", entryToModify);
+        LDAPEntry result = (LDAPEntry) runFlow("testModifyEntryFlow", entryToModify).getMessage().getPayload();
         
         assertEquals("user1", result.getAttribute("uid").getValue());
         assertEquals("User One", result.getAttribute("cn").getValue());
@@ -105,7 +105,7 @@ public class LDAPModifyTest extends AbstractLDAPConnectorEmbeddedLDAPTest
         entryToModify.addAttribute("mail", new String[] {"user1@mail.com"});
         entryToModify.addAttribute("objectclass", new String[] {"top", "person", "organizationalPerson", "inetOrgPerson"});
         
-        LDAPEntry result = (LDAPEntry) runFlow("testModifyEntryFlow", entryToModify);
+        LDAPEntry result = (LDAPEntry) runFlow("testModifyEntryFlow", entryToModify).getMessage().getPayload();
         
         assertEquals("user1", result.getAttribute("uid").getValue());
         assertEquals("User One", result.getAttribute("cn").getValue());
