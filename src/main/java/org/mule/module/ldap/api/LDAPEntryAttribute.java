@@ -31,7 +31,8 @@ public abstract class LDAPEntryAttribute implements Serializable
     private static final long serialVersionUID = -1854622206842090871L;
 
     private String name = null;
-
+    private LDAPEntryAttributeTypeDefinition typeDefinition = null;
+    
     /**
 	 * 
 	 */
@@ -104,5 +105,15 @@ public abstract class LDAPEntryAttribute implements Serializable
             buffer.append(LDAPUtils.NEW_LINE);
         }
         return buffer.toString();
+    }
+
+    public LDAPEntryAttributeTypeDefinition getTypeDefinition()
+    {
+        return typeDefinition;
+    }
+
+    public void setTypeDefinition(LDAPEntryAttributeTypeDefinition typeDefinition)
+    {
+        this.typeDefinition = typeDefinition;
     }
 }

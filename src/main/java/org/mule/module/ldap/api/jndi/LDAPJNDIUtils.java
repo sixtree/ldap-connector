@@ -17,6 +17,7 @@ import javax.naming.NamingEnumeration;
 import javax.naming.NamingException;
 import javax.naming.directory.Attribute;
 import javax.naming.directory.Attributes;
+import javax.naming.directory.DirContext;
 import javax.naming.directory.SearchControls;
 import javax.naming.ldap.Control;
 import javax.naming.ldap.LdapName;
@@ -26,6 +27,7 @@ import javax.naming.ldap.SortKey;
 
 import org.mule.module.ldap.api.LDAPEntry;
 import org.mule.module.ldap.api.LDAPEntryAttribute;
+import org.mule.module.ldap.api.LDAPEntryAttributeTypeDefinition;
 import org.mule.module.ldap.api.LDAPException;
 import org.mule.module.ldap.api.LDAPMultiValueEntryAttribute;
 import org.mule.module.ldap.api.LDAPSearchControls;
@@ -34,7 +36,7 @@ import org.mule.module.ldap.api.LDAPSortKey;
 
 public class LDAPJNDIUtils
 {
-
+    
     /**
      * 
      */
@@ -50,6 +52,18 @@ public class LDAPJNDIUtils
      */
     public static LDAPEntry buildEntry(String entryDN, Attributes attributes) throws LDAPException
     {
+        return buildEntry(entryDN, attributes, false);
+    }
+    
+    /**
+     * @param entryDN
+     * @param attributes
+     * @param retrieveAttributeTypeDefinition
+     * @return
+     * @throws LDAPException
+     */
+    public static LDAPEntry buildEntry(String entryDN, Attributes attributes, boolean retrieveAttributeTypeDefinition) throws LDAPException
+    {
         LDAPEntry anEntry = new LDAPEntry(entryDN);
         if (attributes != null)
         {
@@ -57,7 +71,7 @@ public class LDAPJNDIUtils
             {
                 for (NamingEnumeration<?> attrs = attributes.getAll(); attrs.hasMore();)
                 {
-                    anEntry.addAttribute(buildAttribute((Attribute) attrs.nextElement()));
+                    anEntry.addAttribute(buildAttribute((Attribute) attrs.nextElement(), retrieveAttributeTypeDefinition));
                 }
             }
             catch (NamingException nex)
@@ -73,10 +87,12 @@ public class LDAPJNDIUtils
      * @return
      * @throws LDAPException
      */
-    protected static LDAPEntryAttribute buildAttribute(Attribute attribute) throws LDAPException
+    protected static LDAPEntryAttribute buildAttribute(Attribute attribute, boolean retrieveAttributeTypeDefinition) throws LDAPException
     {
         if (attribute != null)
         {
+            LDAPEntryAttributeTypeDefinition typeDefinition = retrieveAttributeTypeDefinition ? buildAttributeTypeDefinition(attribute) : null;
+            
             try
             {
                 if (attribute.size() > 1)
@@ -88,6 +104,7 @@ public class LDAPJNDIUtils
                     {
                         newAttribute.addValue(values.next());
                     }
+                    newAttribute.setTypeDefinition(typeDefinition);
                     return newAttribute;
                 }
                 else
@@ -95,6 +112,7 @@ public class LDAPJNDIUtils
                     LDAPSingleValueEntryAttribute newAttribute = new LDAPSingleValueEntryAttribute();
                     newAttribute.setName(attribute.getID());
                     newAttribute.setValue(attribute.get());
+                    newAttribute.setTypeDefinition(typeDefinition);
                     return newAttribute;
                 }
             }
@@ -108,6 +126,29 @@ public class LDAPJNDIUtils
             return null;
         }
     }   
+    
+    protected static LDAPEntryAttributeTypeDefinition buildAttributeTypeDefinition(Attribute attribute) throws LDAPException
+    {
+        if(attribute != null)
+        {
+            try
+            {
+                DirContext attrSchema = attribute.getAttributeDefinition();
+                
+                LDAPEntryAttributeTypeDefinition typeDefinition = new LDAPEntryAttributeTypeDefinition();
+                
+                return typeDefinition;
+            }
+            catch (NamingException nex)
+            {
+                throw LDAPException.create(nex);
+            }
+        }
+        else
+        {
+            return null;
+        }
+    }
     
     /**
      * 
