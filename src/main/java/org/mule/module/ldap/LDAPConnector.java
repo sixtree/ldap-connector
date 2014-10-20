@@ -890,6 +890,11 @@ public class LDAPConnector
         return results != null && results.size() > 0 ? results.get(0) : null;
     }
 
+    private LDAPEntry mapToLDAPEntry(Map<String, Object> entryMap) throws LDAPException
+    {
+        return entryMap instanceof LDAPEntry ? (LDAPEntry) entryMap : new LDAPEntry(entryMap);        
+    }
+    
     /**
      * Creates a new {@link LDAPEntry} in the LDAP server. The entry should contain the distinguished name (DN), the <i>objectClass</i>
      * attributes that define its structure and at least a value for all the required attributes (required attributes depend on the
@@ -910,18 +915,20 @@ public class LDAPConnector
      */
     @Processor
     @InvalidateConnectionOn(exception = CommunicationException.class)
-    public void add(@Optional @Default("#[payload:]") LDAPEntry entry) throws Exception
+    public void add(@Optional @Default("#[payload:]") Map<String, Object> entry) throws Exception
     {
+        LDAPEntry ldapEntry = mapToLDAPEntry(entry);
+        
         if(logger.isDebugEnabled())
         {
-            logger.debug("About to add entry " + entry.getDn() + ": " + entry);
+            logger.debug("About to add entry " + ldapEntry.getDn() + ": " + entry);
         }        
         
-        this.connection.addEntry(entry);
+        this.connection.addEntry(ldapEntry);
         
         if(logger.isInfoEnabled())
         {
-            logger.info("Added entry " + entry.getDn());
+            logger.info("Added entry " + ldapEntry.getDn());
         }
     }
     
@@ -958,9 +965,11 @@ public class LDAPConnector
      * @throws org.mule.module.ldap.api.NameAlreadyBoundException If there is already an existing entry with the same DN in the LDAP server tree.
      * @throws org.mule.module.ldap.api.LDAPException In case there is any other exception, mainly related to connectivity problems or referrals.
      * @throws Exception In case there is any other error creating the entry (for example if the DN is not passed as an argument nor in the entry map).
+     * @deprecated LDAPEntry is now a Map<String, Object> so it makes no sense using this operation.
      */
     @Processor
     @InvalidateConnectionOn(exception = CommunicationException.class)
+    @Deprecated
     public void addFromMap(@Optional @FriendlyName("DN") String dn, @Optional @Default("#[payload:]") Map<String, Object> entry) throws Exception
     {
         // Need to remove the DN from the map, so that it only contains attributes
@@ -1130,9 +1139,11 @@ public class LDAPConnector
      * @throws org.mule.module.ldap.api.NameNotFoundException If there is no existing entry with the same DN in the LDAP server tree.
      * @throws org.mule.module.ldap.api.LDAPException In case there is any other exception, mainly related to connectivity problems or referrals.
      * @throws Exception In case there is any other error updating the entry (for example if the DN is not passed as an argument nor in the entry map).
+     * @deprecated LDAPEntry is now a Map<String, Object> so it makes no sense using this operation.
      */
     @Processor
     @InvalidateConnectionOn(exception = CommunicationException.class)
+    @Deprecated
     public void modifyFromMap(@Optional @FriendlyName("DN") String dn, @Optional @Default("#[payload:]") Map<String, Object> entry) throws Exception
     {
         // Need to remove the DN from the map, so that it only contains attributes
@@ -1568,11 +1579,15 @@ public class LDAPConnector
      *  
      * @param entry The {@link LDAPEntry} to transform to map.
      * @return The {@link Map} representation of the entry.
+     * @deprecated LDAPEntry is now a Map<String, Object> so it makes no sense using this transformer.
      */
     @Transformer(sourceTypes = {LDAPEntry.class})
+    @Deprecated
     public static Map<String, Object> ldapEntryToMap(LDAPEntry entry)
     {
-        return entry != null ? entry.toMap() : null;
+        // Now that entry is a map, just return the entry.
+        // Leaving this for backwards compatibility
+        return entry;
     }
     
     /**

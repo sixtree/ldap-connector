@@ -88,4 +88,24 @@ public class LDAPEntryAttributes implements Serializable
     {
         return (LDAPEntryAttribute) this.attributes.get(name.toLowerCase());
     }
+    
+    /**
+     * 
+     * @param name
+     * @return
+     */
+    public LDAPEntryAttribute removeAttribute(String name)
+    {
+        return this.attributes.remove(name.toLowerCase());
+    }
+    
+    /**
+     * 
+     * @param attribute
+     * @return
+     */
+    public LDAPEntryAttribute removeAttribute(LDAPEntryAttribute attribute)
+    {
+        return removeAttribute(attribute.getName());
+    }    
 }
