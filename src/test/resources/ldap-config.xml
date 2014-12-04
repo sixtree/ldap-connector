@@ -28,6 +28,8 @@
         http://www.mulesoft.org/schema/mule/ldap http://www.mulesoft.org/schema/mule/ldap/current/mule-ldap.xsd">
  
 	<ldap:config name="adminConf" url="ldap://localhost:10389/" authDn="uid=admin,ou=people,dc=mulesoft,dc=org" authPassword="admin"/>
+
+	<ldap:config name="multiTenancyConf" url="ldap://localhost:10389/" authDn="#[map-payload:authDn]" authPassword="#[map-payload:authPassword]"/>
 	
 	<!--
 	For anonymous authentication just need to set authentication to "none"

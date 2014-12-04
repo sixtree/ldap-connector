@@ -40,6 +40,6 @@
 	</flow>
 
     <flow name="testAuthenticationBind">
-    	<ldap:bind config-ref="adminConf" authDn="#[map-payload:authDn]" authPassword="#[map-payload:authPassword]" />
+    	<ldap:bind config-ref="multiTenancyConf" />
 	</flow>
 </mule>
