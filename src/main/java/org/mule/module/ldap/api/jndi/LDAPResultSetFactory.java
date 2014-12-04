@@ -13,6 +13,7 @@ import javax.naming.directory.SearchResult;
 import javax.naming.ldap.LdapContext;
 
 import org.mule.module.ldap.api.LDAPResultSet;
+import org.mule.module.ldap.api.LDAPSchemaAware;
 import org.mule.module.ldap.api.LDAPSearchControls;
 
 public class LDAPResultSetFactory
@@ -35,21 +36,21 @@ public class LDAPResultSetFactory
      * @param entries
      * @return
      */
-    public static LDAPResultSet create(String baseDn, String filter, Object[] filterArgs, LdapContext conn, LDAPSearchControls controls, NamingEnumeration<SearchResult> entries)
+    public static LDAPResultSet create(String baseDn, String filter, Object[] filterArgs, LdapContext conn, LDAPSearchControls controls, NamingEnumeration<SearchResult> entries, LDAPSchemaAware connection)
     {
         if(controls.isPagingEnabled())
         {
-            return new PagedLDAPResultSet(baseDn, filter, filterArgs, conn, controls, entries);
+            return new PagedLDAPResultSet(baseDn, filter, filterArgs, conn, controls, entries, connection);
         }
         else
         {
-            return new SimpleLDAPResultSet(baseDn, conn, controls, entries);
+            return new SimpleLDAPResultSet(baseDn, conn, controls, entries, connection);
         }
     }
     
-    public static LDAPResultSet create(String baseDn, NamingEnumeration<SearchResult> entries)
+    public static LDAPResultSet create(String baseDn, NamingEnumeration<SearchResult> entries, LDAPSchemaAware connection)
     {
-        return new SimpleLDAPResultSet(baseDn, null, new LDAPSearchControls(), entries);
+        return new SimpleLDAPResultSet(baseDn, null, new LDAPSearchControls(), entries, connection);
     }
 }
 

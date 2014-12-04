@@ -20,9 +20,11 @@ import javax.naming.ldap.LdapContext;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.mule.module.ldap.api.LDAPConnection;
 import org.mule.module.ldap.api.LDAPEntry;
 import org.mule.module.ldap.api.LDAPException;
 import org.mule.module.ldap.api.LDAPResultSet;
+import org.mule.module.ldap.api.LDAPSchemaAware;
 import org.mule.module.ldap.api.LDAPSearchControls;
 
 public class SimpleLDAPResultSet implements LDAPResultSet
@@ -32,15 +34,17 @@ public class SimpleLDAPResultSet implements LDAPResultSet
     private NamingEnumeration<SearchResult> entries = null;
     private String baseDn = null;
     private LDAPSearchControls controls = null;
+    private LDAPConnection schemaCache = null;
     
     /**
      * 
      */
-    public SimpleLDAPResultSet(String baseDn, LdapContext conn, LDAPSearchControls controls, NamingEnumeration<SearchResult> entries)
+    public SimpleLDAPResultSet(String baseDn, LdapContext conn, LDAPSearchControls controls, NamingEnumeration<SearchResult> entries, LDAPSchemaAware schemaCache)
     {
         this.entries = entries;
         this.baseDn = baseDn;
         this.controls = controls;
+        this.schemaCache = null;
     }
 
     /**
@@ -84,7 +88,7 @@ public class SimpleLDAPResultSet implements LDAPResultSet
             {
                 entryDn += "," + baseDn;
             }
-            return LDAPJNDIUtils.buildEntry(entryDn, searchResult.getAttributes());
+            return LDAPJNDIUtils.buildEntry(entryDn, searchResult.getAttributes(), schemaCache);
         }
         else
         {
@@ -114,6 +118,7 @@ public class SimpleLDAPResultSet implements LDAPResultSet
         finally
         {
             this.entries = null;
+            this.schemaCache = null; // Only used in order to retrieve schema cache
         }
     }
 

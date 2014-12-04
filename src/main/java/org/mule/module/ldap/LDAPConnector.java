@@ -8,34 +8,33 @@
 
 package org.mule.module.ldap;
 
-import java.net.UnknownHostException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
 import org.apache.log4j.Logger;
 import org.mule.api.ConnectionException;
-import org.mule.api.ConnectionExceptionCode;
-import org.mule.api.annotations.Category;
-import org.mule.api.annotations.Configurable;
-import org.mule.api.annotations.Connect;
-import org.mule.api.annotations.ConnectionIdentifier;
+import org.mule.api.annotations.ConnectionStrategy;
 import org.mule.api.annotations.Connector;
-import org.mule.api.annotations.Disconnect;
-import org.mule.api.annotations.InvalidateConnectionOn;
+import org.mule.api.annotations.MetaDataKeyRetriever;
+import org.mule.api.annotations.MetaDataRetriever;
 import org.mule.api.annotations.Processor;
+import org.mule.api.annotations.ReconnectOn;
 import org.mule.api.annotations.Transformer;
-import org.mule.api.annotations.ValidateConnection;
 import org.mule.api.annotations.display.FriendlyName;
-import org.mule.api.annotations.display.Password;
 import org.mule.api.annotations.display.Placement;
-import org.mule.api.annotations.param.ConnectionKey;
 import org.mule.api.annotations.param.Default;
+import org.mule.api.annotations.param.MetaDataKeyParam;
+import org.mule.api.annotations.param.MetaDataKeyParamAffectsType;
 import org.mule.api.annotations.param.Optional;
 import org.mule.api.callback.SourceCallback;
-import org.mule.module.ldap.api.AuthenticationException;
+import org.mule.common.metadata.DefaultMetaData;
+import org.mule.common.metadata.DefaultMetaDataKey;
+import org.mule.common.metadata.MetaData;
+import org.mule.common.metadata.MetaDataKey;
+import org.mule.common.metadata.MetaDataModel;
+import org.mule.common.metadata.builder.DefaultMetaDataBuilder;
+import org.mule.common.metadata.builder.DynamicObjectBuilder;
 import org.mule.module.ldap.api.CommunicationException;
 import org.mule.module.ldap.api.ContextNotEmptyException;
 import org.mule.module.ldap.api.InvalidAttributeException;
@@ -159,6 +158,62 @@ import org.mule.util.StringUtils;
  * </ul>
  *  </td>
  *  </tr>
+ *  <tr>
+ *  <td><b>Use Schema</b></td>
+ *  <td>
+ * If set to true, the LDAP connector will use the LDAP schema (only works for LDAP v3) to define the structure of the LDAP entry (or map). This needs to be 'true'
+ * in order to use DataSense.
+ * <br/>
+ * If useSchema is true, then the LDAP server schema will be used to determine if attributes of the {@link LDAPEntry} will be Multi Valued ({@link LDAPMultiValueEntryAttribute}) or Single Value {@link LDAPSingleValueEntryAttribute}. This translates if the
+ * value will be a {@link java.util.List} or a single Object (String, byte[], etc.). In the past, attributes were Multi Valued only when the retrieved LDAP entry had more
+ * than one value.
+ * <br/><br/>
+ * <b>Example:</b><br/>
+ * <i>Sample LDAP server entry</i>:<br/>
+ * <code>
+ * dn: attr1=Value2,ou=group,dc=company,dc=org<br/>
+ * attr1: Value1<br/>
+ * attr2: Value2<br/>
+ * multi1: Value3<br/>
+ * multi1: Value4<br/>
+ * objectclass: top<br/>
+ * objectclass: myentry
+ * </code>
+ * <br/><br/>
+ * <i>Schema for objectClass myentry</i>:<br/>
+ * <code>
+ * attr1: {SINGLE-VALUE=true}<br/>
+ * attr2: {SINGLE-VALUE=false}<br/>
+ * multi1: {SINGLE-VALUE=false}<br/>
+ * </code>
+ * <br/><br/>
+ * <i>If useSchema is <b>false</b> then the resulting {@link LDAPEntry} representing the payload will return</i>:<br/>
+ * <code>
+ * // Using LDAPEntry methods<br/>
+ * payload.getAttribute("attr1")  returns {@link LDAPSingleValueEntryAttribute}<br/>
+ * payload.getAttribute("attr2")  returns {@link LDAPSingleValueEntryAttribute} (<u>The attribute has only one value</u>)<br/>
+ * payload.getAttribute("multi1") returns  {@link LDAPMultiValueEntryAttribute}<br/>
+ * <br/><br/>
+ * // Using {@link java.util.Map} methods<br/>
+ * payload.get("attr1")  returns {@link java.lang.String}<br/>
+ * payload.get("attr2")  returns {@link java.lang.String} (<u>The attribute has only one value</u>)<br/>
+ * payload.get("multi1") returns {@link java.util.List}<br/>
+ * </code>
+ * <br/><br/>
+ * <i>If useSchema is <b>true</b> then the resulting {@link LDAPEntry} representing the payload will return</i>:<br/>
+ * <code>
+ * // Using LDAPEntry methods<br/>
+ * payload.getAttribute("attr1")  returns {@link LDAPSingleValueEntryAttribute}<br/>
+ * payload.getAttribute("attr2")  returns {@link LDAPMultiValueEntryAttribute} (<u>The attribute is multi value</u>)<br/>
+ * payload.getAttribute("multi1") returns  {@link LDAPMultiValueEntryAttribute}<br/>
+ * <br/><br/>
+ * // Using {@link java.util.Map} methods<br/>
+ * payload.get("attr1")  returns {@link java.lang.String}<br/>
+ * payload.get("attr2")  returns {@link java.util.List} (<u>The attribute is multi value</u>)<br/>
+ * payload.get("multi1") returns {@link java.util.List}<br/>
+ * </code>
+ * </td>
+ * </tr>
  * </table>
  * <p/>
  * {@sample.config ../../../doc/mule-module-ldap.xml.sample ldap:config-1}
@@ -170,217 +225,14 @@ import org.mule.util.StringUtils;
  * @author Mariano Capurro (MuleSoft, Inc.)
  */
 @Connector(name = "ldap", schemaVersion = "3.5", friendlyName="LDAP", minMuleVersion="3.5", description="LDAP Connector that allows you to connect to any LDAP server and perform every LDAP operation")
-@Category(name = "org.mule.tooling.category.core", description = "Components")
 public class LDAPConnector
 {
     protected final Logger logger = Logger.getLogger(getClass());
+
+    @ConnectionStrategy
+    private LDAPCacheConnection connectionStrategy;
     
-    /**
-     * The connection URL to the LDAP server with the following syntax: <code>ldap[s]://hostname:port/base_dn</code>.
-     */
-    @Configurable
-    @Placement(group = "Connection", order = 0)
-    @FriendlyName("URL")
-    private String url;
-
-    /**
-     * The implementation of the connection to be used. 
-     */
-    @Configurable
-    @Optional
-    @Default(value = "JNDI")
-    private Type type;
-
-    /**
-     * The string representation of an integer that represents the number of connections per connection identity to create when initially
-     * creating a connection for the identity. To disable pooling, just set this value to 0 (zero).
-     */
-    @Configurable
-    @Optional
-    @Default(value = "1")
-    @Placement(group = "Pooling Configuration", order = 1)
-    private int initialPoolSize;
-
-    /**
-     * The string representation of an integer that represents the maximum number of connections per connection identity that can be maintained
-     * concurrently.
-     */
-    @Configurable
-    @Optional
-    @Default(value = "5")
-    @Placement(group = "Pooling Configuration", order = 2)
-    private int maxPoolSize;
-
-    /**
-     * The string representation of an integer that represents the number of milliseconds that an idle connection may remain in the pool without
-     * being closed and removed from the pool. 
-     */
-    @Configurable
-    @Optional
-    @Default(value = "60000")
-    @Placement(group = "Pooling Configuration", order = 3)
-    private long poolTimeout;
-
-    /**
-     * Constant that holds the name of the environment property for specifying how referrals encountered by the service provider are to be processed (follow, ignore, throw).
-     */
-    @Configurable
-    @Optional
-    @Default(value = "IGNORE")
-    @Placement(group = "Advanced")
-    private Referral referral;
-    
-    /**
-     * This is a {@link Map} instance holding extended configuration attributes that will be used in the Context environment.
-     */
-    @Configurable
-    @Optional
-    @Placement(group = "Advanced")
-    private Map<String, String> extendedConfiguration;
-    
-    /*
-     * LDAP client
-     */
-    private LDAPConnection connection = null;
-    
-    private final String connectionIdPrefix = new SimpleDateFormat("yyyyMMddHHmmss").format(new Date());
-    
-    // Connection Management
-    /**
-     * Establish the connection to the LDAP server and use connection management to handle different
-     * users.
-     * 
-     * @param authDn The DN (distinguished name) of the user (for example: uid=user,ou=people,dc=mulesoft,dc=org).
-     *               If using Microsoft Active Directory, instead of the DN, you can provide the user@domain (for example: user@mulesoft.org)
-     * @param authPassword The password of the user
-     * @param authentication Specifies the authentication mechanism to use. For the Sun LDAP service provider, this can be one of the following strings:
-     * <ul>
-     *    <li><b>simple</b> (DEFAULT): Used for user/password authentication.</li>
-     *    <li><b>none</b>: Used for anonymous authentication.</li>
-     *    <li><b>sasl_mech</b> (UNSUPPORTED): Where sasl_mech is a space-separated list of SASL mechanism names.
-     *             SASL is the Simple Authentication and Security Layer (RFC 2222). It specifies a challenge-response protocol in which
-     *             data is exchanged between the client and the server for the purposes of authentication and establishment of a security
-     *             layer on which to carry out subsequent communication. By using SASL, the LDAP can support any type of authentication
-     *             agreed upon by the LDAP client and server.</li>
-     * </ul>
-     * @throws ConnectionException Holding one of the possible values in {@link ConnectionExceptionCode}.
-     */
-    @Connect
-    public void connect(@ConnectionKey @FriendlyName("Principal DN") String authDn, @Optional @FriendlyName("Password") @Password String authPassword, @Optional String authentication) throws ConnectionException
-    {
-        
-        authentication = authentication == null ? LDAPConnection.SIMPLE_AUTHENTICATION : authentication;
-        /*
-         * DevKit doesn't support null values for the @Connect parameters. In order to have an anonymous bind, the
-         * authentication parameter should be "none" and a default value should be provided as value for "authDn".
-         */
-        try
-        {
-            if(this.connection == null)
-            {
-                this.connection = LDAPConnection.getConnection(type.toString(), getUrl(), authentication, getInitialPoolSize(), getMaxPoolSize(), getPoolTimeout(), getReferral().toString(), getExtendedConfiguration());
-            }
-            
-            if(LDAPConnection.NO_AUTHENTICATION.equals(authentication))
-            {
-                // Anonymous -> Ignoring authDn and authPassword
-                // For DevKit connection Management to work, authDn should be set to a value (like ANONYMOUS)
-                this.connection.bind(null, null);
-            }
-            else
-            {
-                this.connection.bind(authDn, authPassword);
-            }
-        }
-        catch(CommunicationException ex)
-        {
-            if(ex.getCause() instanceof javax.naming.CommunicationException && ((javax.naming.CommunicationException) ex.getCause()).getRootCause() instanceof UnknownHostException)
-            {
-                throw new ConnectionException(ConnectionExceptionCode.UNKNOWN_HOST, ex.getCode(), ex.getMessage(), ex);
-            }
-            else
-            {
-                throw new ConnectionException(ConnectionExceptionCode.CANNOT_REACH, ex.getCode(), ex.getMessage(), ex);
-            }
-        }
-        catch(AuthenticationException ex)
-        {
-            throw new ConnectionException(ConnectionExceptionCode.INCORRECT_CREDENTIALS, ex.getCode(), ex.getMessage(), ex);
-        }
-        catch(NameNotFoundException ex)
-        {
-            throw new ConnectionException(ConnectionExceptionCode.INCORRECT_CREDENTIALS, ex.getCode(), ex.getMessage(), ex);
-        }
-        catch(LDAPException ex)
-        {
-            throw new ConnectionException(ConnectionExceptionCode.UNKNOWN, ex.getCode(), ex.getMessage(), ex);
-        }
-        catch(Throwable ex)
-        {
-            throw new ConnectionException(ConnectionExceptionCode.UNKNOWN, null, ex.getMessage(), ex);
-        }
-    }
-
-    /**
-     * Disconnect the current connection
-     */
-    @Disconnect
-    public void disconnect()
-    {
-        String id = connectionId();
-        if(logger.isDebugEnabled())
-        {
-            logger.debug("About to disconnect " + id);
-        }
-        if (this.connection != null)
-        {
-            try
-            {
-                this.connection.close();
-            }
-            catch (LDAPException ex)
-            {
-                logger.error("Unable to close connection " + id + ". Forcing close anyway.", ex);
-            }
-            finally
-            {
-                this.connection = null;
-            }
-        }
-    }
-
-    /**
-     * Are we connected?
-     * 
-     * @return boolean <i>true</i> if the connection is still valid or <i>false</i> otherwise.
-     */
-    @ValidateConnection
-    public boolean isConnected()
-    {
-        try
-        {
-            return this.connection != null && !this.connection.isClosed();
-        }
-        catch (Exception ex)
-        {
-            logger.error("Unable to validate LDAP connection. Returning that LDAP is not connected.", ex);
-            return false;
-        }        
-    }
-
-    /**
-     * Returns the connection ID
-     * 
-     * @return String with the connection Id
-     */
-    @ConnectionIdentifier
-    public String connectionId()
-    {
-        return "[" + connectionIdPrefix + "]:" + (this.connection != null ? this.connection.toString() : "{null connection}");
-    }
-
     // Operations
-    
     /**
      * Performs an LDAP bind (login) operation. After login there will be a LDAP connection pool
      * ready to use for other operations using the authenticated user.
@@ -406,16 +258,16 @@ public class LDAPConnector
      *  
      */
     @Processor
-    @InvalidateConnectionOn(exception = CommunicationException.class)
+    @ReconnectOn(exceptions = CommunicationException.class)
     public LDAPEntry bind() throws Exception
     {
         /*
          * Force the login. By the time the connection makes it here it is already handled by the Connection Manager.
          * :TODO: Check when the connection was binded and avoid rebinding a newly created connection by the connection manager.
          */
-        this.connection.rebind();
+        getConnectionStrategy().getConnection().rebind();
         
-        String dn = this.connection.getBindedUserDn();
+        String dn = getConnectionStrategy().getConnection().getBindedUserDn();
         
         if(logger.isInfoEnabled())
         {
@@ -433,7 +285,7 @@ public class LDAPConnector
             
             try
             {
-                entry = this.connection.lookup(dn);
+                entry = getConnectionStrategy().getConnection().lookup(dn);
             }
             catch(LDAPException ex)
             {
@@ -457,6 +309,19 @@ public class LDAPConnector
     }
     
     /**
+     * Closes the current connection, forcing the login operation (bind) the next time it is used.
+     * 
+     *  {@sample.xml ../../../doc/mule-module-ldap.xml.sample ldap:unbind}
+     *  
+     *  @since 1.3.1
+     */
+    @Processor
+    public void unbind()
+    {
+        getConnectionStrategy().disconnect();
+    }
+    
+    /**
      * Retrieves an entry from the LDAP server base on its distinguished name (DN). DNs are the unique identifiers
      * of an LDAP entry, so this method will perform a search based on this ID and so return a single entry as result
      * or throw an exception if the DN is invalid or inexistent.
@@ -474,6 +339,7 @@ public class LDAPConnector
      * @param dn The DN of the LDAP entry that will be retrieved.
      * @param attributes A list of the attributes that should be returned in the result. If the attributes list is empty or null, then by default all
      *        LDAP entry attributes are returned.
+     * @param structuralObjectClass The type of entry that will be returned. Only for DataSense purposes to be used in Anypoint Studio IDE. Has no impact on runtime, that's why it is optional.
      * @return The {@link LDAPEntry} for the given <code>dn</code> parameter.
      * @throws org.mule.module.ldap.api.NoPermissionException If the current binded user has no permissions to perform the lookup for the given DN.
      * @throws org.mule.module.ldap.api.NameNotFoundException If base DN is invalid (for example it doesn't exist)
@@ -481,8 +347,8 @@ public class LDAPConnector
      * @throws Exception In case there is any other error performing the lookup.
      */
     @Processor
-    @InvalidateConnectionOn(exception = CommunicationException.class)
-    public LDAPEntry lookup(@FriendlyName("DN") String dn, @Optional List<String> attributes) throws Exception
+    @ReconnectOn(exceptions = CommunicationException.class)
+    public LDAPEntry lookup(@FriendlyName("DN") String dn, @Optional List<String> attributes, @Optional @MetaDataKeyParam(affects=MetaDataKeyParamAffectsType.OUTPUT) String structuralObjectClass) throws Exception
     {
         if(logger.isDebugEnabled())
         {
@@ -492,11 +358,11 @@ public class LDAPConnector
         LDAPEntry entry = null;
         if(attributes != null && attributes.size() > 0)
         {
-            entry = this.connection.lookup(dn, attributes.toArray(new String[0]));
+            entry = getConnectionStrategy().getConnection().lookup(dn, attributes.toArray(new String[0]));
         }
         else
         {
-            entry = this.connection.lookup(dn);
+            entry = getConnectionStrategy().getConnection().lookup(dn);
         }
         
         if(logger.isDebugEnabled())
@@ -519,12 +385,12 @@ public class LDAPConnector
      * @throws Exception In case there is any other error checking for entry existence.
      */
     @Processor
-    @InvalidateConnectionOn(exception = CommunicationException.class)
+    @ReconnectOn(exceptions = CommunicationException.class)
     public boolean exists(@FriendlyName("DN") String dn) throws Exception
     {
         try
         {
-            return lookup(dn, null) != null;
+            return lookup(dn, null, null) != null;
         }
         catch(NameNotFoundException nnfe)
         {
@@ -572,6 +438,7 @@ public class LDAPConnector
      * @param returnObject Enables/disables returning objects returned as part of the result. If disabled, only the name and class of the object is returned.
      *                     If enabled, the object will be returned. 
      * @param pageSize If the LDAP server supports paging results set in this attribute the size of the page. If the pageSize is less or equals than 0, then paging will be disabled.
+     * @param structuralObjectClass The type of entry that will be returned. Only for DataSense purposes to be used in Anypoint Studio IDE. Has no impact on runtime, that's why it is optional.
      * 
      * @return A {@link java.util.List} of {@link LDAPEntry} objects with the results of the search. If the search throws no results, then this is an empty list.
      * @throws org.mule.module.ldap.api.NoPermissionException If the current binded user has no permissions to perform the search under the given base DN.
@@ -580,12 +447,13 @@ public class LDAPConnector
      * @throws Exception In case there is any other error performing the search.
      */
     @Processor
-    @InvalidateConnectionOn(exception = CommunicationException.class)
+    @ReconnectOn(exceptions = CommunicationException.class)
     public List<LDAPEntry> search(@FriendlyName("Base DN") String baseDn, String filter, @Optional List<String> attributes,
-                                  @Optional @Default("ONE_LEVEL") SearchScope scope, @Optional @Default("0") @Placement(group = "Search Controls") int timeout,
-                                  @Optional @Default("0") @Placement(group = "Search Controls") long maxResults,
-                                  @Optional @Default("false") @Placement(group = "Search Controls") boolean returnObject,
-                                  @Optional @Default("0") @Placement(group = "Search Controls") int pageSize) throws Exception
+                                  @Default("ONE_LEVEL") SearchScope scope, @Default("0") @Placement(group = "Search Controls") int timeout,
+                                  @Default("0") @Placement(group = "Search Controls") long maxResults,
+                                  @Default("false") @Placement(group = "Search Controls") boolean returnObject,
+                                  @Default("0") @Placement(group = "Search Controls") int pageSize,
+                                  @Optional @MetaDataKeyParam(affects=MetaDataKeyParamAffectsType.OUTPUT) String structuralObjectClass) throws Exception
     {
         LDAPResultSet result = null;
         try
@@ -606,7 +474,7 @@ public class LDAPConnector
             controls.setReturnObject(returnObject);
             controls.setPageSize(pageSize);
             
-            result = this.connection.search(baseDn, filter, controls);
+            result = getConnectionStrategy().getConnection().search(baseDn, filter, controls);
             
             List<LDAPEntry> allEntries = result.getAllEntries();
             
@@ -674,6 +542,7 @@ public class LDAPConnector
      * @param resultPageCount How many pages of size <i>resultPageSize</i> starting at <i>resultOffset</i> should be returned/processed. If zero (0) or negative, or if <i>resultPageCount</i> is greater than the total amount of pages, then all pages are returned.
      * @param orderBy Name of the LDAP attribute used to sort results.
      * @param ascending If <i>orderBy</i> was set, whether to sort in ascending or descending order.
+     * @param structuralObjectClass The type of entry that will be returned. Only for DataSense purposes to be used in Anypoint Studio IDE. Has no impact on runtime, that's why it is optional.
      * @param callback Intercepting callback (stream paged results)
      * @return A list with individual results of executing the rest of flow with each results page.
      * @throws org.mule.module.ldap.api.NoPermissionException If the current binded user has no permissions to perform the search under the given base DN.
@@ -682,17 +551,18 @@ public class LDAPConnector
      * @throws Exception In case there is any other error performing the search.
      */
     @Processor(intercepting=true)
-    @InvalidateConnectionOn(exception = CommunicationException.class)
+    @ReconnectOn(exceptions = CommunicationException.class)
     public List<Object> pagedResultSearch(@FriendlyName("Base DN") String baseDn, String filter, @Optional List<String> attributes,
-                                          @Optional @Default("ONE_LEVEL") SearchScope scope, @Optional @Default("0") @Placement(group = "Search Controls") int timeout,
-                                          @Optional @Default("0") @Placement(group = "Search Controls") long maxResults,
-                                          @Optional @Default("false") @Placement(group = "Search Controls") boolean returnObject,
-                                          @Optional @Default("0") @Placement(group = "Search Controls") int pageSize,
-                                          @Optional @Default("1") @Placement(group = "Results Paging") int resultPageSize,
-                                          @Optional @Default("0") @Placement(group = "Results Paging") int resultOffset,
-                                          @Optional @Default("0") @Placement(group = "Results Paging") int resultPageCount,
+                                          @Default("ONE_LEVEL") SearchScope scope, @Default("0") @Placement(group = "Search Controls") int timeout,
+                                          @Default("0") @Placement(group = "Search Controls") long maxResults,
+                                          @Default("false") @Placement(group = "Search Controls") boolean returnObject,
+                                          @Default("0") @Placement(group = "Search Controls") int pageSize,
+                                          @Default("1") @Placement(group = "Results Paging") int resultPageSize,
+                                          @Default("0") @Placement(group = "Results Paging") int resultOffset,
+                                          @Default("0") @Placement(group = "Results Paging") int resultPageCount,
                                           @FriendlyName("Order by attribute") @Optional @Placement(group = "Search Controls", order = 1) String orderBy,
-                                          @FriendlyName("Ascending order?") @Optional @Default("true") @Placement(group = "Search Controls", order = 2) boolean ascending,
+                                          @FriendlyName("Ascending order?") @Default("true") @Placement(group = "Search Controls", order = 2) boolean ascending,
+                                          @Optional @MetaDataKeyParam(affects=MetaDataKeyParamAffectsType.OUTPUT) String structuralObjectClass,
                                           SourceCallback callback) throws Exception
     {
         LDAPResultSet result = null;
@@ -723,7 +593,7 @@ public class LDAPConnector
                 controls.getSortKeys().add(new LDAPSortKey(orderBy, ascending, null));
             }
             
-            result = this.connection.search(baseDn, filter, controls);
+            result = getConnectionStrategy().getConnection().search(baseDn, filter, controls);
             
             LDAPEntry anEntry = null;
             int entryCount = 0, pageCount = 0;
@@ -865,6 +735,7 @@ public class LDAPConnector
      * @param maxResults The maximum number of entries that will be returned as a result of the search. 0 indicates that all entries will be returned. 
      * @param returnObject Enables/disables returning objects returned as part of the result. If disabled, only the name and class of the object is returned.
      *                     If enabled, the object will be returned. 
+     * @param structuralObjectClass The type of entry that will be returned. Only for DataSense purposes to be used in Anypoint Studio IDE. Has no impact on runtime, that's why it is optional.
      * @return A {@link LDAPEntry} with the first element of the search result or null if there are no results.
      * @throws org.mule.module.ldap.api.NoPermissionException If the current binded user has no permissions to perform the search under the given base DN.
      * @throws org.mule.module.ldap.api.NameNotFoundException If base DN is invalid (for example it doesn't exist)
@@ -872,15 +743,15 @@ public class LDAPConnector
      * @throws Exception In case there is any other error performing the search.
      */
     @Processor
-    @InvalidateConnectionOn(exception = CommunicationException.class)
-    public LDAPEntry searchOne(@FriendlyName("Base DN") String baseDn, String filter, @Optional List<String> attributes, @Optional @Default("ONE_LEVEL") SearchScope scope, @Optional @Default("0") @Placement(group = "Search Controls") int timeout, @Optional @Default("0") @Placement(group = "Search Controls") long maxResults, @Optional @Default("false") @Placement(group = "Search Controls") boolean returnObject) throws Exception
+    @ReconnectOn(exceptions = CommunicationException.class)
+    public LDAPEntry searchOne(@FriendlyName("Base DN") String baseDn, String filter, @Optional List<String> attributes, @Default("ONE_LEVEL") SearchScope scope, @Default("0") @Placement(group = "Search Controls") int timeout, @Default("0") @Placement(group = "Search Controls") long maxResults, @Default("false") @Placement(group = "Search Controls") boolean returnObject, @Optional @MetaDataKeyParam(affects=MetaDataKeyParamAffectsType.OUTPUT) String structuralObjectClass) throws Exception
     {
         if(logger.isDebugEnabled())
         {
             logger.debug("Searching entries under " + baseDn + " with filter " + filter);
         }
         
-        List<LDAPEntry> results = search(baseDn, filter, attributes, scope, timeout, maxResults, returnObject, 0);
+        List<LDAPEntry> results = search(baseDn, filter, attributes, scope, timeout, maxResults, returnObject, 0, structuralObjectClass);
         
         if(results != null && results.size() > 1)
         {
@@ -906,6 +777,7 @@ public class LDAPConnector
      * {@sample.xml ../../../doc/mule-module-ldap.xml.sample ldap:add-2}
      * 
      * @param entry The {@link LDAPEntry} that should be added.
+     * @param structuralObjectClass The type of entry that will be added. Only for DataSense purposes to be used in Anypoint Studio IDE. Has no impact on runtime, that's why it is optional.
      * @throws org.mule.module.ldap.api.NoPermissionException If the current binded user has no permissions to add entries under any of the RDN (relative DN) that compose the entry DN.
      * @throws org.mule.module.ldap.api.InvalidAttributeException If the structure of the entry is invalid (for example there are missing required attributes or it has attributes that
      *         are not part of any of the defined object classes)
@@ -914,8 +786,8 @@ public class LDAPConnector
      * @throws Exception In case there is any other error creating the entry.
      */
     @Processor
-    @InvalidateConnectionOn(exception = CommunicationException.class)
-    public void add(@Optional @Default("#[payload:]") Map<String, Object> entry) throws Exception
+    @ReconnectOn(exceptions = CommunicationException.class)
+    public void add(@Default("#[payload:]") Map<String, Object> entry, @Optional @MetaDataKeyParam(affects=MetaDataKeyParamAffectsType.INPUT) String structuralObjectClass) throws Exception
     {
         LDAPEntry ldapEntry = mapToLDAPEntry(entry);
         
@@ -924,7 +796,7 @@ public class LDAPConnector
             logger.debug("About to add entry " + ldapEntry.getDn() + ": " + entry);
         }        
         
-        this.connection.addEntry(ldapEntry);
+        getConnectionStrategy().getConnection().addEntry(ldapEntry);
         
         if(logger.isInfoEnabled())
         {
@@ -968,9 +840,9 @@ public class LDAPConnector
      * @deprecated LDAPEntry is now a Map<String, Object> so it makes no sense using this operation.
      */
     @Processor
-    @InvalidateConnectionOn(exception = CommunicationException.class)
+    @ReconnectOn(exceptions = CommunicationException.class)
     @Deprecated
-    public void addFromMap(@Optional @FriendlyName("DN") String dn, @Optional @Default("#[payload:]") Map<String, Object> entry) throws Exception
+    public void addFromMap(@Optional @FriendlyName("DN") String dn, @Default("#[payload:]") Map<String, Object> entry) throws Exception
     {
         // Need to remove the DN from the map, so that it only contains attributes
         String entryDn = (String) entry.remove(LDAPEntry.MAP_DN_KEY);
@@ -990,7 +862,7 @@ public class LDAPConnector
             logger.debug("About to add entry " + entryDn + ": " + entry);
         }
         
-        this.connection.addEntry(new LDAPEntry(entryDn, entry));
+        getConnectionStrategy().getConnection().addEntry(new LDAPEntry(entryDn, entry));
         
         if(logger.isInfoEnabled())
         {
@@ -1046,6 +918,7 @@ public class LDAPConnector
      * {@sample.xml ../../../doc/mule-module-ldap.xml.sample ldap:modify-2}
 
      * @param entry The {@link LDAPEntry} that should be updated.
+     * @param structuralObjectClass The type of entry that will be updated. Only for DataSense purposes to be used in Anypoint Studio IDE. Has no impact on runtime, that's why it is optional.
      * @throws org.mule.module.ldap.api.NoPermissionException If the current binded user has no permissions to update entries under any of the RDN (relative DN) that compose the entry DN.
      * @throws org.mule.module.ldap.api.InvalidAttributeException If the structure of the entry is invalid (for example there are missing required attributes or it has attributes that
      *         are not part of any of the defined object classes)
@@ -1054,15 +927,15 @@ public class LDAPConnector
      * @throws Exception In case there is any other error updating the entry.
      */
     @Processor
-    @InvalidateConnectionOn(exception = CommunicationException.class)
-    public void modify(@Optional @Default("#[payload:]") LDAPEntry entry) throws Exception
+    @ReconnectOn(exceptions = CommunicationException.class)
+    public void modify(@Default("#[payload:]") LDAPEntry entry, @Optional @MetaDataKeyParam(affects=MetaDataKeyParamAffectsType.INPUT) String structuralObjectClass) throws Exception
     {
         if(logger.isDebugEnabled())
         {
             logger.debug("About to modify entry " + entry.getDn() + ": " + entry);
         }        
         
-        this.connection.updateEntry(entry);
+        getConnectionStrategy().getConnection().updateEntry(entry);
         
         if(logger.isInfoEnabled())
         {
@@ -1142,9 +1015,9 @@ public class LDAPConnector
      * @deprecated LDAPEntry is now a Map<String, Object> so it makes no sense using this operation.
      */
     @Processor
-    @InvalidateConnectionOn(exception = CommunicationException.class)
+    @ReconnectOn(exceptions = CommunicationException.class)
     @Deprecated
-    public void modifyFromMap(@Optional @FriendlyName("DN") String dn, @Optional @Default("#[payload:]") Map<String, Object> entry) throws Exception
+    public void modifyFromMap(@Optional @FriendlyName("DN") String dn, @Default("#[payload:]") Map<String, Object> entry) throws Exception
     {
         // Need to remove the DN from the map, so that it only contains attributes
         String entryDn = (String) entry.remove(LDAPEntry.MAP_DN_KEY);;
@@ -1164,7 +1037,7 @@ public class LDAPConnector
             logger.debug("About to update entry " + entryDn + ": " + entry);
         }
         
-        this.connection.updateEntry(new LDAPEntry(entryDn, entry));
+        getConnectionStrategy().getConnection().updateEntry(new LDAPEntry(entryDn, entry));
         
         if(logger.isInfoEnabled())
         {
@@ -1189,15 +1062,15 @@ public class LDAPConnector
      * @throws Exception In case there is any other error deleting the entry.
      */
     @Processor
-    @InvalidateConnectionOn(exception = CommunicationException.class)
-    public void delete(@Optional @Default("#[payload:]") @FriendlyName("DN") String dn) throws Exception
+    @ReconnectOn(exceptions = CommunicationException.class)
+    public void delete(@Default("#[payload:]") @FriendlyName("DN") String dn) throws Exception
     {
         if(logger.isDebugEnabled())
         {
             logger.debug("About to delete entry " + dn);
         }
         
-        this.connection.deleteEntry(dn);
+        getConnectionStrategy().getConnection().deleteEntry(dn);
         
         if(logger.isInfoEnabled())
         {
@@ -1217,7 +1090,7 @@ public class LDAPConnector
      * @throws Exception In case there is any other error deleting the entry.
      */
     @Processor
-    @InvalidateConnectionOn(exception = CommunicationException.class)
+    @ReconnectOn(exceptions = CommunicationException.class)
     public void rename(@Placement(order = 1) @FriendlyName("Current DN") String oldDn, @Placement(order = 2) @FriendlyName("New DN") String newDn) throws Exception
     {
         if(logger.isDebugEnabled())
@@ -1225,7 +1098,7 @@ public class LDAPConnector
             logger.debug("About to rename entry " + oldDn + " to " + newDn);
         }
         
-        this.connection.renameEntry(oldDn, newDn);
+        getConnectionStrategy().getConnection().renameEntry(oldDn, newDn);
         
         if(logger.isInfoEnabled())
         {
@@ -1255,8 +1128,8 @@ public class LDAPConnector
      * @throws Exception In case there is any other error updating the entry.
      */
     @Processor
-    @InvalidateConnectionOn(exception = CommunicationException.class)
-    public void addSingleValueAttribute(@FriendlyName("DN") String dn, String attributeName, String attributeValue, @Optional @Default("false") boolean ignoreInvalidAttribute) throws Exception
+    @ReconnectOn(exceptions = CommunicationException.class)
+    public void addSingleValueAttribute(@FriendlyName("DN") String dn, String attributeName, String attributeValue, @Default("false") boolean ignoreInvalidAttribute) throws Exception
     {
         if(logger.isDebugEnabled())
         {
@@ -1265,7 +1138,7 @@ public class LDAPConnector
         
         try
         {
-            this.connection.addAttribute(dn, new LDAPSingleValueEntryAttribute(attributeName, attributeValue));
+            getConnectionStrategy().getConnection().addAttribute(dn, new LDAPSingleValueEntryAttribute(attributeName, attributeValue));
         }
         catch(InvalidAttributeException iaex)
         {
@@ -1304,8 +1177,8 @@ public class LDAPConnector
      * @throws Exception In case there is any other error updating the entry.
      */
     @Processor
-    @InvalidateConnectionOn(exception = CommunicationException.class)
-    public void addMultiValueAttribute(@FriendlyName("DN") String dn, String attributeName, List<Object> attributeValues, @Optional @Default("false") boolean ignoreInvalidAttribute) throws Exception
+    @ReconnectOn(exceptions = CommunicationException.class)
+    public void addMultiValueAttribute(@FriendlyName("DN") String dn, String attributeName, List<Object> attributeValues, @Default("false") boolean ignoreInvalidAttribute) throws Exception
     {
         if(logger.isDebugEnabled())
         {
@@ -1314,7 +1187,7 @@ public class LDAPConnector
         
         try
         {
-            this.connection.addAttribute(dn, new LDAPMultiValueEntryAttribute(attributeName, attributeValues));
+            getConnectionStrategy().getConnection().addAttribute(dn, new LDAPMultiValueEntryAttribute(attributeName, attributeValues));
         }
         catch(InvalidAttributeException iaex)
         {
@@ -1354,8 +1227,8 @@ public class LDAPConnector
      * @throws Exception In case there is any other error updating the entry.
      */
     @Processor
-    @InvalidateConnectionOn(exception = CommunicationException.class)
-    public void modifySingleValueAttribute(@FriendlyName("DN") String dn, String attributeName, String attributeValue, @Optional @Default("false") boolean ignoreInvalidAttribute) throws Exception
+    @ReconnectOn(exceptions = CommunicationException.class)
+    public void modifySingleValueAttribute(@FriendlyName("DN") String dn, String attributeName, String attributeValue, @Default("false") boolean ignoreInvalidAttribute) throws Exception
     {
         if(logger.isDebugEnabled())
         {
@@ -1364,7 +1237,7 @@ public class LDAPConnector
         
         try
         {
-            this.connection.updateAttribute(dn, new LDAPSingleValueEntryAttribute(attributeName, attributeValue));
+            getConnectionStrategy().getConnection().updateAttribute(dn, new LDAPSingleValueEntryAttribute(attributeName, attributeValue));
         }
         catch(InvalidAttributeException iaex)
         {
@@ -1401,8 +1274,8 @@ public class LDAPConnector
      * @throws Exception In case there is any other error updating the entry.
      */
     @Processor
-    @InvalidateConnectionOn(exception = CommunicationException.class)
-    public void modifyMultiValueAttribute(@FriendlyName("DN") String dn, String attributeName, List<Object> attributeValues, @Optional @Default("false") boolean ignoreInvalidAttribute) throws Exception
+    @ReconnectOn(exceptions = CommunicationException.class)
+    public void modifyMultiValueAttribute(@FriendlyName("DN") String dn, String attributeName, List<Object> attributeValues, @Default("false") boolean ignoreInvalidAttribute) throws Exception
     {
         if(logger.isDebugEnabled())
         {
@@ -1411,7 +1284,7 @@ public class LDAPConnector
         
         try
         {
-            this.connection.updateAttribute(dn, new LDAPMultiValueEntryAttribute(attributeName, attributeValues));
+            getConnectionStrategy().getConnection().updateAttribute(dn, new LDAPMultiValueEntryAttribute(attributeName, attributeValues));
         }
         catch(InvalidAttributeException iaex)
         {
@@ -1451,8 +1324,8 @@ public class LDAPConnector
      * @throws Exception In case there is any other error updating the entry.
      */
     @Processor
-    @InvalidateConnectionOn(exception = CommunicationException.class)
-    public void deleteSingleValueAttribute(@FriendlyName("DN") String dn, String attributeName, @Optional String attributeValue, @Optional @Default("false") boolean ignoreInvalidAttribute) throws Exception
+    @ReconnectOn(exceptions = CommunicationException.class)
+    public void deleteSingleValueAttribute(@FriendlyName("DN") String dn, String attributeName, @Optional String attributeValue, @Default("false") boolean ignoreInvalidAttribute) throws Exception
     {
         if(logger.isDebugEnabled())
         {
@@ -1461,7 +1334,7 @@ public class LDAPConnector
         
         try
         {
-            this.connection.deleteAttribute(dn, new LDAPSingleValueEntryAttribute(attributeName, attributeValue));
+            getConnectionStrategy().getConnection().deleteAttribute(dn, new LDAPSingleValueEntryAttribute(attributeName, attributeValue));
         }
         catch(InvalidAttributeException iaex)
         {
@@ -1505,8 +1378,8 @@ public class LDAPConnector
      * @throws Exception In case there is any other error updating the entry.
      */
     @Processor
-    @InvalidateConnectionOn(exception = CommunicationException.class)
-    public void deleteMultiValueAttribute(@FriendlyName("DN") String dn, String attributeName, @Optional List<Object> attributeValues, @Optional @Default("false") boolean ignoreInvalidAttribute) throws Exception
+    @ReconnectOn(exceptions = CommunicationException.class)
+    public void deleteMultiValueAttribute(@FriendlyName("DN") String dn, String attributeName, @Optional List<Object> attributeValues, @Default("false") boolean ignoreInvalidAttribute) throws Exception
     {
         if(logger.isDebugEnabled())
         {
@@ -1515,7 +1388,7 @@ public class LDAPConnector
         
         try
         {
-            this.connection.deleteAttribute(dn, new LDAPMultiValueEntryAttribute(attributeName, attributeValues));
+            getConnectionStrategy().getConnection().deleteAttribute(dn, new LDAPMultiValueEntryAttribute(attributeName, attributeValues));
         }
         catch(InvalidAttributeException iaex)
         {
@@ -1604,75 +1477,37 @@ public class LDAPConnector
         return entry != null ? entry.toLDIFString() : null;
     }
     
-    // Getters and Setters of @Configurable elements
+    // DataSense methods
     
-    public String getUrl()
+    @MetaDataKeyRetriever
+    public List<MetaDataKey> getMetaDataKeys() throws ConnectionException
     {
-        return url;
+        List<MetaDataKey> keys = new ArrayList<MetaDataKey>();
+        
+        
+        keys.add(new DefaultMetaDataKey("person", "person"));
+        keys.add(new DefaultMetaDataKey("organizationalUnit", "organizationalUnit"));
+        keys.add(new DefaultMetaDataKey("person", "person"));
+        return keys;
     }
 
-    public void setUrl(String url)
+    @MetaDataRetriever
+    public MetaData getMetaData(MetaDataKey key) throws ConnectionException
     {
-        this.url = url;
+        MetaData metaData = null;
+        DynamicObjectBuilder<?> dynamicObject = new DefaultMetaDataBuilder().createDynamicObject(key.getId());
+        MetaDataModel model = dynamicObject.build();
+        metaData = new DefaultMetaData(model);
+        return metaData;
     }
 
-    public Type getType()
+    public LDAPCacheConnection getConnectionStrategy()
     {
-        return type;
+        return connectionStrategy;
     }
 
-    public void setType(Type type)
+    public void setConnectionStrategy(LDAPCacheConnection connectionStrategy)
     {
-        this.type = type;
-    }
-
-    public int getInitialPoolSize()
-    {
-        return initialPoolSize;
-    }
-
-    public void setInitialPoolSize(int initialPoolSize)
-    {
-        this.initialPoolSize = initialPoolSize;
-    }
-
-    public int getMaxPoolSize()
-    {
-        return maxPoolSize;
-    }
-
-    public void setMaxPoolSize(int maxPoolSize)
-    {
-        this.maxPoolSize = maxPoolSize;
-    }
-
-    public long getPoolTimeout()
-    {
-        return poolTimeout;
-    }
-
-    public void setPoolTimeout(long poolTimeout)
-    {
-        this.poolTimeout = poolTimeout;
-    }
-
-    public Referral getReferral()
-    {
-        return referral;
-    }
-
-    public void setReferral(Referral referral)
-    {
-        this.referral = referral;
-    }
-
-    public Map<String, String> getExtendedConfiguration()
-    {
-        return extendedConfiguration;
-    }
-
-    public void setExtendedConfiguration(Map<String, String> extendedConfiguration)
-    {
-        this.extendedConfiguration = extendedConfiguration;
+        this.connectionStrategy = connectionStrategy;
     }
 }

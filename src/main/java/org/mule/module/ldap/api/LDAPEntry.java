@@ -207,31 +207,6 @@ public class LDAPEntry implements Serializable, Map<String, Object>
             addAttribute(attr, value);
         }
     }
-
-    /*
-    public Map<String, Object> toMap()
-    {
-        Map<String, Object> entry = new HashMap<String, Object>();
-        
-        entry.put(MAP_DN_KEY, getDn());
-
-        LDAPEntryAttribute anAttr;
-        for (Iterator<LDAPEntryAttribute> it = attributes(); it.hasNext();)
-        {
-            anAttr = it.next();
-            if(!anAttr.isMultiValued())
-            {
-                entry.put(anAttr.getName(), anAttr.getValue());
-            }
-            else
-            {
-                entry.put(anAttr.getName(), anAttr.getValues());
-            }
-        }        
-        
-        return entry;
-    }
-    */
     
     /**
      * 
@@ -331,7 +306,8 @@ public class LDAPEntry implements Serializable, Map<String, Object>
     @Override
     public Object get(Object key)
     {
-        return getAttribute(getKeyAsString(key));
+        LDAPEntryAttribute attr = getAttribute(getKeyAsString(key));
+        return attr.isMultiValued() ? attr.getValues() : attr.getValue();
     }
 
     @Override

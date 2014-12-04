@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 
 import javax.naming.Context;
 import javax.naming.NamingEnumeration;
@@ -38,10 +39,16 @@ import org.apache.commons.lang.StringUtils;
 import org.mule.module.ldap.api.LDAPConnection;
 import org.mule.module.ldap.api.LDAPEntry;
 import org.mule.module.ldap.api.LDAPEntryAttribute;
+import org.mule.module.ldap.api.LDAPEntryAttributeTypeDefinition;
 import org.mule.module.ldap.api.LDAPEntryAttributes;
+import org.mule.module.ldap.api.LDAPEntryObjectClassDefinition;
 import org.mule.module.ldap.api.LDAPException;
 import org.mule.module.ldap.api.LDAPResultSet;
 import org.mule.module.ldap.api.LDAPSearchControls;
+
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 
 /**
  * This class is the abstraction
@@ -71,13 +78,16 @@ public class LDAPJNDIConnection extends LDAPConnection
 
     private String providerUrl = null;
     private int maxPoolConnections = DEFAULT_MAX_POOL_CONNECTIONS;
+    
     private int initialPoolSizeConnections = DEFAULT_INITIAL_POOL_CONNECTIONS;
     private long poolTimeout = DEFAULT_POOL_TIMEOUT;
     private String authentication = NO_AUTHENTICATION;
     private String initialContextFactory = DEFAULT_INITIAL_CONTEXT_FACTORY;
     private String referral = DEFAULT_REFERRAL;
     private Map<String, String> extendedEnvironment = null;
-        
+
+    private LoadingCache<String, LDAPEntryAttributeTypeDefinition> schemaCache = null;
+    
     private LdapContext conn = null;
 
     /**
@@ -123,13 +133,7 @@ public class LDAPJNDIConnection extends LDAPConnection
                               int initialPoolSizeConnections,
                               long poolTimeout) throws LDAPException
     {
-        this();
-        setProviderUrl(providerUrl);
-        setInitialContextFactory(initialContextFactory);
-        setAuthentication(authentication);
-        setMaxPoolConnections(maxPoolConnections);
-        setInitialPoolSizeConnections(initialPoolSizeConnections);
-        setPoolTimeout(poolTimeout);
+        this(providerUrl, initialContextFactory, authentication, maxPoolConnections, initialPoolSizeConnections, poolTimeout, false);
     }
 
     /**
@@ -146,10 +150,58 @@ public class LDAPJNDIConnection extends LDAPConnection
     }
 
     /**
+     * 
+     * @param providerUrl
+     * @param initialContextFactory
+     * @param authentication
+     * @param maxPoolConnections
+     * @param initialPoolSizeConnections
+     * @param poolTimeout
+     * @param useSchema
+     * @throws LDAPException
+     */
+    public LDAPJNDIConnection(String providerUrl,
+                              String initialContextFactory,
+                              String authentication,
+                              int maxPoolConnections,
+                              int initialPoolSizeConnections,
+                              long poolTimeout,
+                              boolean schemaEnabled) throws LDAPException
+    {
+        this();
+        setProviderUrl(providerUrl);
+        setInitialContextFactory(initialContextFactory);
+        setAuthentication(authentication);
+        setMaxPoolConnections(maxPoolConnections);
+        setInitialPoolSizeConnections(initialPoolSizeConnections);
+        setPoolTimeout(poolTimeout);
+        setSchemaEnabled(schemaEnabled);
+        
+        initializeCache();
+    }    
+    
+    private synchronized void initializeCache()
+    {
+        if (isSchemaEnabled() && this.schemaCache == null)
+        {
+            this.schemaCache = CacheBuilder.newBuilder()
+                .maximumSize(1000)
+                .build(new CacheLoader<String, LDAPEntryAttributeTypeDefinition>()
+                {
+                    public LDAPEntryAttributeTypeDefinition load(String attributeName) throws LDAPException
+                    {
+                        return retrieveAttributeTypeDefinition(attributeName);
+                    }
+                });
+        }        
+    }
+    
+    /**
      * @param conf
      * @throws LDAPException
-     * @see org.mule.module.ldap.api.LDAPConnection#initialize(leonards.common.conf.Configuration)
+     * @see org.mule.module.ldap.api.LDAPConnection#initialize(java.util.Map)
      */
+    @Override
     protected void initialize(Map<String, String> conf) throws LDAPException
     {
         if (conf != null)
@@ -178,6 +230,9 @@ public class LDAPJNDIConnection extends LDAPConnection
             setReferral(getConfValue(conf, REFERRAL_ATTR, DEFAULT_REFERRAL));
             extendedEnvironment.remove(REFERRAL_ATTR);
             
+            setSchemaEnabled("true".equals(getConfValue(conf, SCHEMA_ENABLED, String.valueOf(DEFAULT_SCHEMA_ENABLED))));
+            initializeCache();
+            extendedEnvironment.remove(SCHEMA_ENABLED);
         }
     }
 
@@ -254,18 +309,20 @@ public class LDAPJNDIConnection extends LDAPConnection
      * @return
      * @see org.mule.module.ldap.api.LDAPConnection#isClosed()
      */
+    @Override
     public boolean isClosed()
     {
-        return getConn() == null;
+        return this.conn == null;
     }
 
     /**
      * @throws LDAPException
      * @see org.mule.module.ldap.api.LDAPConnection#close()
      */
+    @Override
     public void close() throws LDAPException
     {
-        if (getConn() != null)
+        if (!isClosed())
         {
             String connectionId = toString();
             try
@@ -285,7 +342,7 @@ public class LDAPJNDIConnection extends LDAPConnection
         } 
         else
         {
-            logger.warn("Cannot close a null connection");
+            logger.warn("Connection already closed.");
         }
     }
 
@@ -299,10 +356,17 @@ public class LDAPJNDIConnection extends LDAPConnection
     {
         Hashtable<String, String> env = new Hashtable<String, String>();
         
-        env.put(Context.REFERRAL, getReferral());
+        if (getReferral() != null)
+        {
+            env.put(Context.REFERRAL, getReferral().toLowerCase());
+        }
         env.put(Context.SECURITY_AUTHENTICATION, getAuthentication());
         if (!isNoAuthentication())
         {
+            if (dn == null || password == null)
+            {
+                throw new LDAPException("Bind DN and/or password cannot be null when authentication is required. Used authentication = 'none' for anonymous bind.");
+            }
             env.put(Context.SECURITY_PRINCIPAL, dn);
             env.put(Context.SECURITY_CREDENTIALS, password);
         }
@@ -355,6 +419,7 @@ public class LDAPJNDIConnection extends LDAPConnection
      * @throws LDAPException
      * @see org.mule.module.ldap.api.LDAPConnection#rebind()
      */
+    @Override
     public void rebind() throws LDAPException
     {
         if(isClosed())
@@ -417,6 +482,12 @@ public class LDAPJNDIConnection extends LDAPConnection
         }
     }
     
+    /**
+     * 
+     * @return
+     * @throws LDAPException
+     * @see org.mule.module.ldap.api.LDAPConnection#getBindedUserDn()
+     */
     @Override
     public String getBindedUserDn() throws LDAPException
     {
@@ -488,7 +559,7 @@ public class LDAPJNDIConnection extends LDAPConnection
                 entries = searchConn.search(baseDn, filter, LDAPJNDIUtils.buildSearchControls(controls));
             }
             
-            return LDAPResultSetFactory.create(baseDn, filter, filterArgs, searchConn, controls, entries);
+            return LDAPResultSetFactory.create(baseDn, filter, filterArgs, searchConn, controls, entries, isSchemaEnabled() ? this : null);
         }
         catch (NamingException nex)
         {
@@ -502,15 +573,16 @@ public class LDAPJNDIConnection extends LDAPConnection
      * @throws LDAPException
      * @see org.mule.module.ldap.api.LDAPConnection#lookup(java.lang.String)
      */
+    @Override
     public LDAPEntry lookup(String dn) throws LDAPException
     {
         try
         {
-            return LDAPJNDIUtils.buildEntry(dn, getConn().getAttributes(dn));
+            return LDAPJNDIUtils.buildEntry(dn, getConn().getAttributes(dn), isSchemaEnabled() ? this : null);
         }
         catch (NamingException nex)
         {
-            throw handleNamingException(nex, "Lookup failed.");
+            throw handleNamingException(nex, "Lookup of entry " + dn + " failed.");
         }
     }
 
@@ -522,15 +594,16 @@ public class LDAPJNDIConnection extends LDAPConnection
      * @see org.mule.module.ldap.api.LDAPConnection#lookup(java.lang.String,
      *      java.lang.String[])
      */
+    @Override
     public LDAPEntry lookup(String dn, String[] attributes) throws LDAPException
     {
         try
         {
-            return LDAPJNDIUtils.buildEntry(dn, getConn().getAttributes(dn, attributes));
+            return LDAPJNDIUtils.buildEntry(dn, getConn().getAttributes(dn, attributes), isSchemaEnabled() ? this : null);
         }
         catch (NamingException nex)
         {
-            throw handleNamingException(nex, "Lookup failed.");
+            throw handleNamingException(nex, "Lookup of entry " + dn + " failed.");
         }
     }
 
@@ -539,6 +612,7 @@ public class LDAPJNDIConnection extends LDAPConnection
      * @throws LDAPException
      * @see org.mule.module.ldap.api.LDAPConnection#addEntry(org.mule.module.ldap.api.LDAPEntry)
      */
+    @Override
     public void addEntry(LDAPEntry entry) throws LDAPException
     {
         try
@@ -547,7 +621,7 @@ public class LDAPJNDIConnection extends LDAPConnection
         }
         catch (NamingException nex)
         {
-            throw handleNamingException(nex, "Add entry failed.");
+            throw handleNamingException(nex, "Add entry " + (entry != null ? entry.getDn() : "null") + " failed.");
         }
     }
 
@@ -571,6 +645,7 @@ public class LDAPJNDIConnection extends LDAPConnection
      * @throws LDAPException
      * @see org.mule.module.ldap.api.LDAPConnection#updateEntry(org.mule.module.ldap.api.LDAPEntry)
      */
+    @Override
     public void updateEntry(LDAPEntry entry) throws LDAPException
     {
         try
@@ -586,7 +661,7 @@ public class LDAPJNDIConnection extends LDAPConnection
         }
         catch (NamingException nex)
         {
-            throw handleNamingException(nex, "Update entry failed.");
+            throw handleNamingException(nex, "Update entry " + (entry != null ? entry.getDn() : "null") + " failed.");
         }
     }
 
@@ -595,6 +670,7 @@ public class LDAPJNDIConnection extends LDAPConnection
      * @throws LDAPException
      * @see org.mule.module.ldap.api.LDAPConnection#deleteEntry(org.mule.module.ldap.api.LDAPEntry)
      */
+    @Override
     public void deleteEntry(LDAPEntry entry) throws LDAPException
     {
         deleteEntry(entry.getDn());
@@ -605,6 +681,7 @@ public class LDAPJNDIConnection extends LDAPConnection
      * @throws LDAPException
      * @see org.mule.module.ldap.api.LDAPConnection#deleteEntry(java.lang.String)
      */
+    @Override
     public void deleteEntry(String dn) throws LDAPException
     {
         try
@@ -634,6 +711,7 @@ public class LDAPJNDIConnection extends LDAPConnection
      * @throws LDAPException
      * @see org.mule.module.ldap.api.LDAPConnection#renameEntry(java.lang.String, java.lang.String)
      */
+    @Override
     public void renameEntry(String oldDn, String newDn) throws LDAPException
     {
         try
@@ -652,7 +730,7 @@ public class LDAPJNDIConnection extends LDAPConnection
         }
         catch (NamingException nex)
         {
-            throw handleNamingException(nex, "Rename entry failed.");
+            throw handleNamingException(nex, "Rename entry " + oldDn + " to " + newDn + " failed.");
         }
     }
     
@@ -663,6 +741,7 @@ public class LDAPJNDIConnection extends LDAPConnection
      * @see org.mule.module.ldap.api.LDAPConnection#addAttribute(java.lang.String,
      *      org.mule.module.ldap.api.LDAPEntryAttribute)
      */
+    @Override
     public void addAttribute(String dn, LDAPEntryAttribute attribute) throws LDAPException
     {
         try
@@ -673,7 +752,7 @@ public class LDAPJNDIConnection extends LDAPConnection
         }
         catch (NamingException nex)
         {
-            throw handleNamingException(nex, "Add attribute failed.");
+            throw handleNamingException(nex, "Add attribute " + (attribute != null ? attribute.getName() : "null") + " to entry " + dn + " failed.");
         }
     }
 
@@ -684,6 +763,7 @@ public class LDAPJNDIConnection extends LDAPConnection
      * @see org.mule.module.ldap.api.LDAPConnection#updateAttribute(java.lang.String,
      *      org.mule.module.ldap.api.LDAPEntryAttribute)
      */
+    @Override
     public void updateAttribute(String dn, LDAPEntryAttribute attribute) throws LDAPException
     {
 
@@ -695,7 +775,7 @@ public class LDAPJNDIConnection extends LDAPConnection
         }
         catch (NamingException nex)
         {
-            throw handleNamingException(nex, "Update attribute failed.");
+            throw handleNamingException(nex, "Update attribute " + (attribute != null ? attribute.getName() : "null") + " from entry " + dn + " failed.");
         }
     }
 
@@ -706,6 +786,7 @@ public class LDAPJNDIConnection extends LDAPConnection
      * @see org.mule.module.ldap.api.LDAPConnection#deleteAttribute(java.lang.String,
      *      org.mule.module.ldap.api.LDAPEntryAttribute)
      */
+    @Override
     public void deleteAttribute(String dn, LDAPEntryAttribute attribute) throws LDAPException
     {
         try
@@ -716,10 +797,87 @@ public class LDAPJNDIConnection extends LDAPConnection
         }
         catch (NamingException nex)
         {
-            throw handleNamingException(nex, "Delete attribute failed.");
+            throw handleNamingException(nex, "Delete attribute " + (attribute != null ? attribute.getName() : "null") + " from entry " + dn + " failed.");
         }
     }
 
+    private void silentyCloseDirContect(DirContext ctx)
+    {
+        if (ctx != null)
+        {
+            try {
+                ctx.close();
+            }
+            catch (NamingException nex)
+            {
+                logger.warn("Cannot close directory context", nex);
+            }
+        }
+    }
+    
+    @Override
+    public LDAPEntryAttributeTypeDefinition getAttributeTypeDefinition(String attributeName) throws LDAPException
+    {
+        if (this.schemaCache != null)
+        {
+            try
+            {
+                return this.schemaCache.get(attributeName);
+            }
+            catch (ExecutionException ex)
+            {
+                logger.error("Could not retrieve attribute type definition for attribute " + attributeName + " from cache. Trying to retrieve directly.", ex);
+                return retrieveAttributeTypeDefinition(attributeName);
+            }
+        }
+        else
+        {
+            logger.info("Schema cache disabled. Retriving attribute type definition directly.");
+            return retrieveAttributeTypeDefinition(attributeName);
+        }
+    }
+
+    /**
+     * 
+     * @param attributeName
+     * @return
+     * @throws LDAPException
+     */
+    protected LDAPEntryAttributeTypeDefinition retrieveAttributeTypeDefinition(String attributeName) throws LDAPException
+    {
+        DirContext schema = null;
+        DirContext attrSchema = null;
+        try
+        {
+            // Get the schema tree root
+            schema = getConn().getSchema("");
+
+            if (logger.isDebugEnabled())
+            {
+                logger.debug("About to retrieve attribute definition for attribute " + attributeName);
+            }
+            
+            // Get the schema object for "attributeName"
+            attrSchema = (DirContext) schema.lookup("AttributeDefinition/" + attributeName);   
+            
+            return LDAPJNDIUtils.buildAttributeTypeDefinition(attrSchema.getAttributes(""));
+        }
+        catch(NamingException nex)
+        {
+            throw handleNamingException(nex, "Get attribute type definition for attribute " + attributeName + " failed.");
+        }
+        finally
+        {
+            silentyCloseDirContect(attrSchema);
+            silentyCloseDirContect(schema);
+        }
+    }
+    
+    public LDAPEntryObjectClassDefinition getObjectClassDefinition(String objectClassName) throws LDAPException
+    {
+        return null;
+    }
+    
     /**
      * @return Returns the authentication.
      */
@@ -800,6 +958,10 @@ public class LDAPJNDIConnection extends LDAPConnection
         this.providerUrl = provider;
     }
 
+    /**
+     * 
+     * @return
+     */
     public boolean isConnectionPoolEnabled()
     {
         return getInitialPoolSizeConnections() > 0;
@@ -820,11 +982,16 @@ public class LDAPJNDIConnection extends LDAPConnection
     {
         this.initialContextFactory = initialContextFactory;
     }
+    
     /**
      * @return Returns the conn.
      */
-    private LdapContext getConn()
+    private LdapContext getConn() throws LDAPException
     {
+        if (conn == null)
+        {
+            throw new LDAPException("Connection is closed. Call bind method first.");
+        }
         return conn;
     }
 

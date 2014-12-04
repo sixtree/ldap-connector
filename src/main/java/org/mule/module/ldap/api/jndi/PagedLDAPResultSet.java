@@ -25,6 +25,7 @@ import org.apache.commons.logging.LogFactory;
 import org.mule.module.ldap.api.LDAPEntry;
 import org.mule.module.ldap.api.LDAPException;
 import org.mule.module.ldap.api.LDAPResultSet;
+import org.mule.module.ldap.api.LDAPSchemaAware;
 import org.mule.module.ldap.api.LDAPSearchControls;
 
 public class PagedLDAPResultSet implements LDAPResultSet
@@ -36,7 +37,8 @@ public class PagedLDAPResultSet implements LDAPResultSet
     private Object[] filterArgs;
     private LdapContext conn;
     private LDAPSearchControls controls;
-    
+    private LDAPSchemaAware schemaCache = null;
+
     private NamingEnumeration<SearchResult> entries = null;
     
     private byte[] cookie = null;
@@ -44,13 +46,14 @@ public class PagedLDAPResultSet implements LDAPResultSet
     /**
      * 
      */
-    public PagedLDAPResultSet(String baseDn, String filter, Object[] filterArgs, LdapContext conn, LDAPSearchControls controls, NamingEnumeration<SearchResult> entries)
+    public PagedLDAPResultSet(String baseDn, String filter, Object[] filterArgs, LdapContext conn, LDAPSearchControls controls, NamingEnumeration<SearchResult> entries, LDAPSchemaAware schemaCache)
     {
         this.baseDn = baseDn;
         this.filter = filter;
         this.filterArgs = filterArgs;
         this.controls = controls;
         this.conn = conn;
+        this.schemaCache = schemaCache; // LDAP connection only for schema cache access
         this.entries = entries;
     }
     
@@ -67,6 +70,9 @@ public class PagedLDAPResultSet implements LDAPResultSet
         }
         finally
         {
+            this.schemaCache = null;
+            
+            // This connection (only in the paged result case) is a copy, so we need to close it!
             if(this.conn != null)
             {
                 try
@@ -112,7 +118,7 @@ public class PagedLDAPResultSet implements LDAPResultSet
     @Override
     public LDAPEntry next() throws LDAPException
     {
-        if(hasNext()) // Force navigating to next page
+        if (hasNext()) // Force navigating to next page
         {
             SearchResult searchResult = (SearchResult) this.entries.nextElement();
             String entryDn;
@@ -123,7 +129,7 @@ public class PagedLDAPResultSet implements LDAPResultSet
                 {
                     entryDn += "," + baseDn;
                 }
-                return LDAPJNDIUtils.buildEntry(entryDn, searchResult.getAttributes());
+                return LDAPJNDIUtils.buildEntry(entryDn, searchResult.getAttributes(), schemaCache);
             }
         }
         
@@ -137,7 +143,7 @@ public class PagedLDAPResultSet implements LDAPResultSet
             silentCloseEntriesEnumeration();
             
             this.conn.setRequestControls(LDAPJNDIUtils.buildRequestControls(controls, cookie));
-            if(filterArgs != null && filterArgs.length > 0)
+            if (filterArgs != null && filterArgs.length > 0)
             {
                 this.entries = this.conn.search(baseDn, filter, filterArgs, LDAPJNDIUtils.buildSearchControls(controls));
             }

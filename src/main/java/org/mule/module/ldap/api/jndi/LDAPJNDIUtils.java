@@ -17,7 +17,6 @@ import javax.naming.NamingEnumeration;
 import javax.naming.NamingException;
 import javax.naming.directory.Attribute;
 import javax.naming.directory.Attributes;
-import javax.naming.directory.DirContext;
 import javax.naming.directory.SearchControls;
 import javax.naming.ldap.Control;
 import javax.naming.ldap.LdapName;
@@ -25,17 +24,20 @@ import javax.naming.ldap.PagedResultsControl;
 import javax.naming.ldap.SortControl;
 import javax.naming.ldap.SortKey;
 
+import org.apache.log4j.Logger;
 import org.mule.module.ldap.api.LDAPEntry;
 import org.mule.module.ldap.api.LDAPEntryAttribute;
 import org.mule.module.ldap.api.LDAPEntryAttributeTypeDefinition;
 import org.mule.module.ldap.api.LDAPException;
 import org.mule.module.ldap.api.LDAPMultiValueEntryAttribute;
+import org.mule.module.ldap.api.LDAPSchemaAware;
 import org.mule.module.ldap.api.LDAPSearchControls;
 import org.mule.module.ldap.api.LDAPSingleValueEntryAttribute;
 import org.mule.module.ldap.api.LDAPSortKey;
 
 public class LDAPJNDIUtils
 {
+    protected final static Logger logger = Logger.getLogger(LDAPJNDIUtils.class);
     
     /**
      * 
@@ -52,7 +54,7 @@ public class LDAPJNDIUtils
      */
     public static LDAPEntry buildEntry(String entryDN, Attributes attributes) throws LDAPException
     {
-        return buildEntry(entryDN, attributes, false);
+        return buildEntry(entryDN, attributes, null);
     }
     
     /**
@@ -62,7 +64,7 @@ public class LDAPJNDIUtils
      * @return
      * @throws LDAPException
      */
-    public static LDAPEntry buildEntry(String entryDN, Attributes attributes, boolean retrieveAttributeTypeDefinition) throws LDAPException
+    public static LDAPEntry buildEntry(String entryDN, Attributes attributes, LDAPSchemaAware schemaCache) throws LDAPException
     {
         LDAPEntry anEntry = new LDAPEntry(entryDN);
         if (attributes != null)
@@ -71,7 +73,7 @@ public class LDAPJNDIUtils
             {
                 for (NamingEnumeration<?> attrs = attributes.getAll(); attrs.hasMore();)
                 {
-                    anEntry.addAttribute(buildAttribute((Attribute) attrs.nextElement(), retrieveAttributeTypeDefinition));
+                    anEntry.addAttribute(buildAttribute((Attribute) attrs.nextElement(), schemaCache));
                 }
             }
             catch (NamingException nex)
@@ -81,21 +83,25 @@ public class LDAPJNDIUtils
         }
         return anEntry;
     }    
-    
+
     /**
+     * 
      * @param attribute
+     * @param schemaCache If not null, then the structure of the entry will be based on the LDAP schema.
      * @return
      * @throws LDAPException
      */
-    protected static LDAPEntryAttribute buildAttribute(Attribute attribute, boolean retrieveAttributeTypeDefinition) throws LDAPException
+    protected static LDAPEntryAttribute buildAttribute(Attribute attribute, LDAPSchemaAware schemaCache) throws LDAPException
     {
         if (attribute != null)
         {
-            LDAPEntryAttributeTypeDefinition typeDefinition = retrieveAttributeTypeDefinition ? buildAttributeTypeDefinition(attribute) : null;
+            LDAPEntryAttributeTypeDefinition typeDefinition = schemaCache != null ? schemaCache.getAttributeTypeDefinition(attribute.getID()) : null;
+            
+            boolean isMultiValue = typeDefinition != null ? !typeDefinition.isSingleValue() : attribute.size() > 1;
             
             try
             {
-                if (attribute.size() > 1)
+                if (isMultiValue)
                 {
                     LDAPMultiValueEntryAttribute newAttribute = new LDAPMultiValueEntryAttribute();
                     newAttribute.setName(attribute.getID());
@@ -127,27 +133,45 @@ public class LDAPJNDIUtils
         }
     }   
     
-    protected static LDAPEntryAttributeTypeDefinition buildAttributeTypeDefinition(Attribute attribute) throws LDAPException
+    private static String getSingleValueAsString(Attribute attribute, String defaultValue) throws NamingException
     {
-        if(attribute != null)
+        if (attribute != null)
+        {
+            Object value = attribute.get();
+            return value != null ? value.toString() : null;
+        }
+        else
+        {
+            return defaultValue;
+        }
+    }
+    
+    public static LDAPEntryAttributeTypeDefinition buildAttributeTypeDefinition(Attributes attributes) throws LDAPException
+    {
+        LDAPEntryAttributeTypeDefinition typeDefinition = null;
+        if (attributes != null)
         {
             try
             {
-                DirContext attrSchema = attribute.getAttributeDefinition();
-                
-                LDAPEntryAttributeTypeDefinition typeDefinition = new LDAPEntryAttributeTypeDefinition();
-                
-                return typeDefinition;
+                typeDefinition = new LDAPEntryAttributeTypeDefinition();
+
+                for (NamingEnumeration<?> attrs = attributes.getAll(); attrs.hasMore();)
+                {
+                    Attribute attr = (Attribute) attrs.nextElement();
+                    String attrName = attr.getID();
+                    String attrValue = getSingleValueAsString(attr, null);
+                    if (attrName != null && attrValue != null)
+                    {
+                        typeDefinition.set(attrName, attrValue);
+                    }
+                }
             }
             catch (NamingException nex)
             {
                 throw LDAPException.create(nex);
             }
         }
-        else
-        {
-            return null;
-        }
+        return typeDefinition;
     }
     
     /**

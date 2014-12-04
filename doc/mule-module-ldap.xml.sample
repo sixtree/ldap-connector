@@ -229,3 +229,7 @@
 <!-- BEGIN_INCLUDE(ldap:exists-1) -->
     <ldap:exists dn="ou=people, dc=domain, dc=org"/>
 <!-- END_INCLUDE(ldap:exists-1) -->
+
+<!-- BEGIN_INCLUDE(ldap:unbind) -->
+	<ldap:unbind config-ref="ldapConf"/>
+<!-- END_INCLUDE(ldap:unbind) -->

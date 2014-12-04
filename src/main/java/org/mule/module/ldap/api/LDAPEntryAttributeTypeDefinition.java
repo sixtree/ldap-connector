@@ -7,163 +7,109 @@
  */
 package org.mule.module.ldap.api;
 
-import java.io.Serializable;
 
-public class LDAPEntryAttributeTypeDefinition implements Serializable
+public class LDAPEntryAttributeTypeDefinition extends AbstractLDAPEntryDefinition
 {
     private static final long serialVersionUID = -7441401978161427169L;
     
-    private String numericOid = null;
-    private String name = null;
-    private String syntax = null;
-    private String description = null;
-    private boolean singleValue = false;
-    private boolean obsolete = false;
-    private String supName = null;
-    private String equality = null;
-    private String ordering = null;
-    private String substring = null;
-    private boolean collective = false;
-    private boolean noUserModification = false;
-    private String usage = null;
-
+    public static final String EQUALITY = "EQUALITY";
+    public static final String ORDERING = "ORDERING";
+    public static final String SUBSTRING = "SUBSTRING";
+    public static final String SYNTAX = "SYNTAX";
+    public static final String SINGLE_VALUE = "SINGLE-VALUE";
+    public static final String COLLECTIVE = "COLLECTIVE";
+    public static final String NO_USER_MODIFICATION = "NO-USER-MODIFICATION";
+    public static final String USAGE = "USAGE";
+    
     /**
      * 
      */
     public LDAPEntryAttributeTypeDefinition()
     {
+        super();
     }
 
-    public String getNumericOid()
-    {
-        return numericOid;
-    }
 
-    public void setNumericOid(String numericOid)
-    {
-        this.numericOid = numericOid;
-    }
-
-    public String getName()
-    {
-        return name;
-    }
-
-    public void setName(String name)
-    {
-        this.name = name;
-    }
 
     public String getSyntax()
     {
-        return syntax;
+        return getAttributeAsString(SYNTAX);
     }
 
     public void setSyntax(String syntax)
     {
-        this.syntax = syntax;
-    }
-
-    public String getDescription()
-    {
-        return description;
-    }
-
-    public void setDescription(String description)
-    {
-        this.description = description;
+        this.attributes.put(SYNTAX, syntax);
     }
 
     public boolean isSingleValue()
     {
-        return singleValue;
+        return getAttributeAsBoolean(SINGLE_VALUE);
     }
 
     public void setSingleValue(boolean singleValue)
     {
-        this.singleValue = singleValue;
-    }
-
-    public boolean isObsolete()
-    {
-        return obsolete;
-    }
-
-    public void setObsolete(boolean obsolete)
-    {
-        this.obsolete = obsolete;
-    }
-
-    public String getSupName()
-    {
-        return supName;
-    }
-
-    public void setSupName(String supName)
-    {
-        this.supName = supName;
+        this.attributes.put(SINGLE_VALUE, String.valueOf(singleValue));
     }
 
     public String getEquality()
     {
-        return equality;
+        return getAttributeAsString(EQUALITY);
     }
 
     public void setEquality(String equality)
     {
-        this.equality = equality;
+        this.attributes.put(EQUALITY, equality);
     }
 
     public String getOrdering()
     {
-        return ordering;
+        return getAttributeAsString(ORDERING);
     }
 
     public void setOrdering(String ordering)
     {
-        this.ordering = ordering;
+        this.attributes.put(ORDERING, ordering);
     }
 
     public String getSubstring()
     {
-        return substring;
+        return getAttributeAsString(SUBSTRING);
     }
 
     public void setSubstring(String substring)
     {
-        this.substring = substring;
+        this.attributes.put(SUBSTRING, substring);
     }
 
     public boolean isCollective()
     {
-        return collective;
+        return getAttributeAsBoolean(COLLECTIVE);
     }
 
     public void setCollective(boolean collective)
     {
-        this.collective = collective;
+        this.attributes.put(COLLECTIVE, String.valueOf(collective));
     }
 
     public boolean isNoUserModification()
     {
-        return noUserModification;
+        return getAttributeAsBoolean(NO_USER_MODIFICATION);
     }
 
     public void setNoUserModification(boolean noUserModification)
     {
-        this.noUserModification = noUserModification;
+        this.attributes.put(NO_USER_MODIFICATION, String.valueOf(noUserModification));
     }
 
     public String getUsage()
     {
-        return usage;
+        return getAttributeAsString(USAGE);
     }
 
     public void setUsage(String usage)
     {
-        this.usage = usage;
+        this.attributes.put(USAGE, usage);
     }
-
 }
 
 

@@ -20,12 +20,15 @@ import org.mule.module.ldap.api.jndi.LDAPJNDIConnection;
  * 
  * @author mariano
  */
-public abstract class LDAPConnection
+public abstract class LDAPConnection implements LDAPSchemaAware
 {
 
     protected final Log logger = LogFactory.getLog(getClass());
 
+    public static final boolean DEFAULT_SCHEMA_ENABLED = false;
     protected static final Map<String, Class<?>> CONNECTION_IMPLEMENTATIONS = new HashMap<String, Class<?>>();
+
+    private boolean schemaEnabled = DEFAULT_SCHEMA_ENABLED;
 
     static
     {
@@ -41,6 +44,7 @@ public abstract class LDAPConnection
     public static final String MAX_POOL_CONNECTIONS_ATTR = "maxPoolSize";
     public static final String POOL_TIMEOUT_ATTR = "poolTimeout";
     public static final String REFERRAL_ATTR = "referral";
+    public static final String SCHEMA_ENABLED = "schema-enabled";
     
     /**
 	 * 
@@ -66,6 +70,11 @@ public abstract class LDAPConnection
     
     public static LDAPConnection getConnection(String type, String url, String authentication, int initialPoolSize, int maxPoolSize, long poolTimeout, String referral, Map<String, String> extendedConf) throws LDAPException
     {
+        return getConnection(type, url, authentication, initialPoolSize, maxPoolSize, poolTimeout, referral, extendedConf, DEFAULT_SCHEMA_ENABLED);        
+    }    
+
+    public static LDAPConnection getConnection(String type, String url, String authentication, int initialPoolSize, int maxPoolSize, long poolTimeout, String referral, Map<String, String> extendedConf, boolean schemaEnabled) throws LDAPException
+    {
         Map<String, String> conf = extendedConf != null ? new HashMap<String, String>(extendedConf) : new HashMap<String, String>();
         conf.put(CONNECTION_TYPE_ATTR, type);
         conf.put(LDAP_URL_ATTR, url);
@@ -74,10 +83,11 @@ public abstract class LDAPConnection
         conf.put(INITIAL_POOL_CONNECTIONS_ATTR, String.valueOf(initialPoolSize));
         conf.put(MAX_POOL_CONNECTIONS_ATTR, String.valueOf(maxPoolSize));
         conf.put(POOL_TIMEOUT_ATTR, String.valueOf(poolTimeout));
+        conf.put(SCHEMA_ENABLED, String.valueOf(schemaEnabled));
         
         return getConnection(conf);        
     }    
-
+    
     public static LDAPConnection getConnection(String type, String url, String authentication, int initialPoolSize, int maxPoolSize, long poolTimeout, String referral) throws LDAPException
     {
         return getConnection(type, url, authentication, initialPoolSize, maxPoolSize, poolTimeout, referral, new HashMap<String, String>());
@@ -250,4 +260,15 @@ public abstract class LDAPConnection
      * @throws LDAPException
      */
     public abstract boolean isClosed() throws LDAPException;
+    
+    @Override
+    public boolean isSchemaEnabled()
+    {
+        return schemaEnabled;
+    }
+
+    public void setSchemaEnabled(boolean schemaEnabled)
+    {
+        this.schemaEnabled = schemaEnabled;
+    }    
 }
