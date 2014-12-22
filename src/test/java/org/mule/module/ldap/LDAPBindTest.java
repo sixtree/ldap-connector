@@ -19,6 +19,7 @@ import java.util.NoSuchElementException;
 import org.junit.Test;
 import org.mule.api.ConnectionException;
 import org.mule.api.ConnectionExceptionCode;
+import org.mule.api.MuleEvent;
 import org.mule.module.ldap.api.LDAPEntry;
 import org.mule.transport.NullPayload;
 
@@ -41,7 +42,8 @@ public class LDAPBindTest extends AbstractLDAPConnectorEmbeddedLDAPTest
     @Test
     public void testAnonymousBind() throws Exception
     {
-        NullPayload result = (NullPayload) runFlow("testAnonymousBind", null).getMessage().getPayload();
+        MuleEvent event = runFlow("testAnonymousBind");
+        NullPayload result = (NullPayload) event.getMessage().getPayload();
         
         assertEquals(NullPayload.class, result.getClass());
     }
@@ -49,7 +51,7 @@ public class LDAPBindTest extends AbstractLDAPConnectorEmbeddedLDAPTest
     @Test
     public void testConfigBind() throws Exception
     {
-        LDAPEntry result = (LDAPEntry) runFlow("testConfigBind", null).getMessage().getPayload();
+        LDAPEntry result = (LDAPEntry) runFlow("testConfigBind").getMessage().getPayload();
         
         assertEquals("admin", result.getAttribute("uid").getValue());
         assertEquals("Administrator", result.getAttribute("cn").getValue());
