@@ -8,3 +8,4 @@
 target
 bin/
 internal-gateway/deploy.bat
+dependency-reduced-pom.xml
