@@ -18,6 +18,7 @@ import org.mule.api.annotations.ConnectionStrategy;
 import org.mule.api.annotations.Connector;
 import org.mule.api.annotations.MetaDataKeyRetriever;
 import org.mule.api.annotations.MetaDataRetriever;
+import org.mule.api.annotations.Paged;
 import org.mule.api.annotations.Processor;
 import org.mule.api.annotations.ReconnectOn;
 import org.mule.api.annotations.Transformer;
@@ -27,7 +28,6 @@ import org.mule.api.annotations.param.Default;
 import org.mule.api.annotations.param.MetaDataKeyParam;
 import org.mule.api.annotations.param.MetaDataKeyParamAffectsType;
 import org.mule.api.annotations.param.Optional;
-import org.mule.api.callback.SourceCallback;
 import org.mule.common.metadata.DefaultMetaData;
 import org.mule.common.metadata.DefaultMetaDataKey;
 import org.mule.common.metadata.MetaData;
@@ -47,6 +47,8 @@ import org.mule.module.ldap.api.LDAPSearchControls;
 import org.mule.module.ldap.api.LDAPSingleValueEntryAttribute;
 import org.mule.module.ldap.api.LDAPSortKey;
 import org.mule.module.ldap.api.NameNotFoundException;
+import org.mule.streaming.PagingConfiguration;
+import org.mule.streaming.ProviderAwarePagingDelegate;
 import org.mule.util.StringUtils;
 
 /**
@@ -537,173 +539,55 @@ public class LDAPConnector
      * @param returnObject Enables/disables returning objects returned as part of the result. If disabled, only the name and class of the object is returned.
      *                     If enabled, the object will be returned. 
      * @param pageSize If the LDAP server supports paging results set in this attribute the size of the page. If the pageSize is less or equals than 0, then paging will be disabled.
-     * @param resultPageSize The size of the list this operation streams. If this value is less than 1, then it will be considered that the page size is 1.
-     * @param resultOffset Considering the results are paged in resultPageSize pages, then this is the first page that should be retrieved.
-     * @param resultPageCount How many pages of size <i>resultPageSize</i> starting at <i>resultOffset</i> should be returned/processed. If zero (0) or negative, or if <i>resultPageCount</i> is greater than the total amount of pages, then all pages are returned.
      * @param orderBy Name of the LDAP attribute used to sort results.
      * @param ascending If <i>orderBy</i> was set, whether to sort in ascending or descending order.
      * @param structuralObjectClass The type of entry that will be returned. Only for DataSense purposes to be used in Anypoint Studio IDE. Has no impact on runtime, that's why it is optional.
-     * @param callback Intercepting callback (stream paged results)
+     * @param pagingConfiguration Paging configuration. If the LDAP server supports paging results set in the fetchSize field of this object the size of the page. If the fetchSize is less or equals than 0, then paging will be disabled.
      * @return A list with individual results of executing the rest of flow with each results page.
      * @throws org.mule.module.ldap.api.NoPermissionException If the current binded user has no permissions to perform the search under the given base DN.
      * @throws org.mule.module.ldap.api.NameNotFoundException If base DN is invalid (for example it doesn't exist)
      * @throws org.mule.module.ldap.api.LDAPException In case there is any other exception, mainly related to connectivity problems or referrals.
      * @throws Exception In case there is any other error performing the search.
      */
-    @Processor(intercepting=true)
+    @Processor
     @ReconnectOn(exceptions = CommunicationException.class)
-    public List<Object> pagedResultSearch(@FriendlyName("Base DN") String baseDn, String filter, @Optional List<String> attributes,
+    @Paged(defaultFetchSize=200)
+    public ProviderAwarePagingDelegate<LDAPEntry, LDAPConnector> pagedResultSearch(@FriendlyName("Base DN") String baseDn, String filter, @Optional List<String> attributes,
                                           @Default("ONE_LEVEL") SearchScope scope, @Default("0") @Placement(group = "Search Controls") int timeout,
                                           @Default("0") @Placement(group = "Search Controls") long maxResults,
                                           @Default("false") @Placement(group = "Search Controls") boolean returnObject,
-                                          @Default("0") @Placement(group = "Search Controls") int pageSize,
-                                          @Default("1") @Placement(group = "Results Paging") int resultPageSize,
-                                          @Default("0") @Placement(group = "Results Paging") int resultOffset,
-                                          @Default("0") @Placement(group = "Results Paging") int resultPageCount,
                                           @FriendlyName("Order by attribute") @Optional @Placement(group = "Search Controls", order = 1) String orderBy,
                                           @FriendlyName("Ascending order?") @Default("true") @Placement(group = "Search Controls", order = 2) boolean ascending,
                                           @Optional @MetaDataKeyParam(affects=MetaDataKeyParamAffectsType.OUTPUT) String structuralObjectClass,
-                                          SourceCallback callback) throws Exception
+                                          PagingConfiguration pagingConfiguration) throws Exception
     {
         LDAPResultSet result = null;
-        List<Object> flowResults = new ArrayList<Object>();
-        try
+
+        if(logger.isDebugEnabled())
         {
-            resultPageSize = resultPageSize < 1 ? 1 : resultPageSize;
-            resultOffset = resultOffset <= 0 ? 0 : resultOffset;
-            resultPageCount = resultPageCount <= 0 ? 0 : resultPageCount;
-            
-            if(logger.isDebugEnabled())
-            {
-                logger.debug("About to search LDAP entries matching " + filter + " under: " + baseDn + ". Returning results in pages of " + resultPageSize + " entries.");
-            }
-            
-            LDAPSearchControls controls = new LDAPSearchControls();
-            if(attributes != null && attributes.size() > 0)
-            {
-                controls.setAttributesToReturn(attributes.toArray(new String[0]));
-            }
-            controls.setMaxResults(maxResults);
-            controls.setTimeout(timeout);
-            controls.setScope(scope.getValue());
-            controls.setReturnObject(returnObject);
-            controls.setPageSize(pageSize);
-            if(StringUtils.isNotBlank(orderBy))
-            {
-                controls.getSortKeys().add(new LDAPSortKey(orderBy, ascending, null));
-            }
-            
-            result = getConnectionStrategy().getConnection().search(baseDn, filter, controls);
-            
-            LDAPEntry anEntry = null;
-            int entryCount = 0, pageCount = 0;
-            Object flowResult;
-            
-            if(resultPageSize == 1)
-            {
-                if(logger.isDebugEnabled())
-                {
-                    logger.debug("Offest is " + resultOffset + ". Skipping the first " + resultOffset + " entries");
-                }
-                skipEntries(result, resultOffset);
-                
-                while(result.hasNext() && (resultPageCount == 0 || entryCount < resultPageCount))
-                {
-                    entryCount++;
-                    anEntry = result.next();
-
-                    if(logger.isDebugEnabled())
-                    {
-                        logger.debug("Entry " + entryCount + " -> " + anEntry);
-                    }
-                    
-                    flowResult = callback.process(anEntry);
-                    
-                    if(flowResult != null)
-                    {
-                        flowResults.add(flowResult);
-                    }
-                    
-                    if(logger.isDebugEnabled())
-                    {
-                        logger.debug("Processed entry " + entryCount);
-                    }
-                }
-            }
-            else
-            {
-                List<LDAPEntry> page;
-                
-                if(logger.isDebugEnabled())
-                {
-                    logger.debug("Offest is " + resultOffset + ". Skipping the first " + resultOffset + " pages of size " + resultPageSize);
-                }
-                skipEntries(result, resultPageSize * resultOffset);
-                
-                while(result.hasNext() && (resultPageCount == 0 || pageCount < resultPageCount))
-                {
-                    page = new ArrayList<LDAPEntry>(resultPageSize);
-                    pageCount++;
-                    
-                    for(int i=0; i < resultPageSize && result.hasNext(); i++)
-                    {
-                        entryCount++;
-                        anEntry = result.next();
-                        
-                        if(logger.isDebugEnabled())
-                        {
-                            logger.debug("Page " + pageCount + " / Entry " + entryCount + " -> " + anEntry);
-                        }
-                        
-                        page.add(anEntry);
-                    }
-
-                    if(logger.isDebugEnabled())
-                    {
-                        logger.debug("Page " + pageCount + " -> " + page);
-                    }
-                    
-                    flowResult = callback.process(page);
-                    
-                    if(flowResult != null)
-                    {
-                        flowResults.add(flowResult);
-                    }
-                    
-                    if(logger.isDebugEnabled())
-                    {
-                        logger.debug("Processed page " + pageCount);
-                    }
-                }
-            }
-            return flowResults;
+            logger.debug("About to search LDAP entries matching " + filter + " under: " + baseDn + ". Returning results in pages of " + pagingConfiguration.getFetchSize() + " entries.");
         }
-        finally
+        
+        LDAPSearchControls controls = new LDAPSearchControls();
+        if(attributes != null && attributes.size() > 0)
         {
-            if(result != null)
-            {
-                result.close();
-            }
-        }        
+            controls.setAttributesToReturn(attributes.toArray(new String[0]));
+        }
+        controls.setMaxResults(maxResults);
+        controls.setTimeout(timeout);
+        controls.setScope(scope.getValue());
+        controls.setReturnObject(returnObject);
+        controls.setPageSize(pagingConfiguration.getFetchSize());
+        if(StringUtils.isNotBlank(orderBy))
+        {
+            controls.getSortKeys().add(new LDAPSortKey(orderBy, ascending, null));
+        }
+        
+        result = getConnectionStrategy().getConnection().search(baseDn, filter, controls);
+        
+        return new LDAPPagingDelegate(result, pagingConfiguration);
     }
 
-    /*
-     * LDAP doesn't support paging, so all results are always returned. In order to skip
-     * pages, the results should be ignored.
-     */
-    private void skipEntries(LDAPResultSet result, int totalEntriesToSkip) throws LDAPException
-    {
-        if(result != null && totalEntriesToSkip > 0)
-        {
-            int count = 0;
-            while(result.hasNext() && count < totalEntriesToSkip)
-            {
-                count++;
-                result.next(); // skip
-            }
-        }
-    }
-    
     /**
      * Performs a LDAP search that is supposed to return a unique result. If the search returns more than one result, then a
      * warn log message is generated and the first element of the result is returned.

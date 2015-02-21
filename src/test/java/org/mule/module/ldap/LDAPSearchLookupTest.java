@@ -16,8 +16,12 @@ import static org.junit.Assert.assertTrue;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.naming.ldap.SortControl;
+
+import org.junit.Ignore;
 import org.junit.Test;
 import org.mule.module.ldap.api.LDAPEntry;
+import org.mule.module.ldap.api.OperationNotSupportedException;
 
 public class LDAPSearchLookupTest extends AbstractLDAPConnectorEmbeddedLDAPTest
 {
@@ -91,16 +95,7 @@ public class LDAPSearchLookupTest extends AbstractLDAPConnectorEmbeddedLDAPTest
     }
     
     @Test
-    public void testPagedResultSearchAsync() throws Exception
-    {
-        @SuppressWarnings("unchecked")
-        List<Object> result = (List<Object>) runFlow("testPagedResultSearchAsyncFlow", "(uid=user*)").getMessage().getPayload();
-        
-        // Returns the same objects that were sent to the async
-        assertEquals(5, result.size());
-    }
-
-    @Test
+    @Ignore // The embedded LDAP Server doesn't support sorting!
     public void testPagedResultSearchSort() throws Exception
     {
         @SuppressWarnings("unchecked")
@@ -114,7 +109,16 @@ public class LDAPSearchLookupTest extends AbstractLDAPConnectorEmbeddedLDAPTest
         {
             assertEquals(sortedCns[i], result.get(i).toString());
         }
-    }    
+    } 
+    
+    @Test
+    public void testUnsupportedSortControl() throws Exception
+    {
+        Throwable ex = (Throwable) runFlowWithPayloadAndReturnException("testPagedResultSearchSortFlow", "(uid=user*)");
+        assertEquals(OperationNotSupportedException.class, ex.getClass());
+        assertTrue(ex.getMessage().contains("does not support sorting results"));
+        assertTrue(ex.getMessage().contains(SortControl.OID));
+    }     
 }
 
 

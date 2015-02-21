@@ -19,6 +19,13 @@ public interface LDAPResultSet
     boolean hasNext() throws LDAPException;
     
     List<LDAPEntry> getAllEntries() throws LDAPException;
+    
+    /**
+     * Retrieves (an estimate of) the number of entries in the search result.
+     * @return The number of entries in the search result, or -1 if unknown.
+     * @throws LDAPException
+     */
+    int getResultSize() throws LDAPException;
 }
 
 

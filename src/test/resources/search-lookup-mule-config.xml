@@ -59,25 +59,26 @@
     	<ldap:search config-ref="adminConf" baseDn="dc=mulesoft,dc=org" filter="#[payload:]"  scope="SUB_TREE" />
 	</flow>
 
-    <flow name="testPaginatedSearchFlow">
-    	<ldap:search config-ref="adminConf" baseDn="dc=mulesoft,dc=org" filter="#[payload:]"  scope="SUB_TREE" pageSize="3" />
-	</flow>
+<!--     <flow name="testPaginatedSearchFlow"> -->
+<!--     	<ldap:search config-ref="adminConf" baseDn="dc=mulesoft,dc=org" filter="#[payload:]"  scope="SUB_TREE" pageSize="3" /> -->
+<!-- 	</flow> -->
 	
     <flow name="testPagedResultSearchFlow">
     	<ldap:paged-result-search config-ref="adminConf" baseDn="ou=people,dc=mulesoft,dc=org" filter="#[payload:]" scope="SUB_TREE" />
-    	<set-payload value="#[payload.getAttribute('cn').getValue()]" />
-	</flow>
-
-    <flow name="testPagedResultSearchAsyncFlow">
-    	<ldap:paged-result-search config-ref="adminConf" baseDn="ou=people,dc=mulesoft,dc=org" filter="#[payload:]" scope="SUB_TREE" />
-        <async>
-            <set-payload value="#[payload.getAttribute('cn').getValue()]" />
-        </async>	
+        <set-variable variableName="results" value="#[new java.util.ArrayList()]"/>
+        <foreach >
+            <expression-component><![CDATA[flowVars.results.add(payload.getAttribute('cn').getValue())]]></expression-component>
+        </foreach>
+        <set-payload value="#[flowVars.results]"/>
 	</flow>
 
     <flow name="testPagedResultSearchSortFlow">
     	<ldap:paged-result-search config-ref="adminConf" baseDn="ou=people,dc=mulesoft,dc=org" filter="#[payload:]" scope="SUB_TREE" orderBy="cn" ascending="true"/>
-    	<set-payload value="#[payload.getAttribute('cn').getValue()]" />
+        <set-variable variableName="results" value="#[new java.util.ArrayList()]"/>
+        <foreach >
+            <expression-component><![CDATA[flowVars.results.add(payload.getAttribute('cn').getValue())]]></expression-component>
+        </foreach>
+        <set-payload value="#[flowVars.results]"/>
 	</flow>
 	
 	<!--     

@@ -224,6 +224,31 @@ public class PagedLDAPResultSet implements LDAPResultSet
         }
     }
 
+    private int getPagedResultsResponseControlResultSize() throws LDAPException
+    {
+        try
+        {
+            // Examine the paged results control response
+            Control[] responseControls = this.conn.getResponseControls();
+            if (responseControls != null)
+            {
+                for (int i = 0; i < responseControls.length; i++)
+                {
+                    if (responseControls[i] instanceof PagedResultsResponseControl)
+                    {
+                        PagedResultsResponseControl prrc = (PagedResultsResponseControl) responseControls[i];
+                        return prrc.getResultSize();
+                    }
+                }
+            }
+            return -1;
+        }
+        catch(NamingException nex)
+        {
+            throw LDAPException.create(nex);
+        }
+    }
+    
     private byte[] getPagedResultsResponseControlCookie() throws LDAPException
     {
         try
@@ -270,6 +295,12 @@ public class PagedLDAPResultSet implements LDAPResultSet
         
         return allEntries;
     }
+
+	@Override
+	public int getResultSize() throws LDAPException
+	{
+		return getPagedResultsResponseControlResultSize();
+	}
 }
 
 

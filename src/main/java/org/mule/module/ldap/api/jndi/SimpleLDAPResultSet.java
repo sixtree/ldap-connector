@@ -121,7 +121,7 @@ public class SimpleLDAPResultSet implements LDAPResultSet
             this.schemaCache = null; // Only used in order to retrieve schema cache
         }
     }
-
+    
     @Override
     public List<LDAPEntry> getAllEntries() throws LDAPException
     {
@@ -139,6 +139,11 @@ public class SimpleLDAPResultSet implements LDAPResultSet
         return allEntries;
     }
 
+	@Override
+	public int getResultSize() throws LDAPException
+	{
+		return -1;
+	}    
 }
 
 
