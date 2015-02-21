@@ -226,7 +226,7 @@ import org.mule.util.StringUtils;
  *
  * @author Mariano Capurro (MuleSoft, Inc.)
  */
-@Connector(name = "ldap", schemaVersion = "3.5", friendlyName="LDAP", minMuleVersion="3.5", description="LDAP Connector that allows you to connect to any LDAP server and perform every LDAP operation")
+@Connector(name = "ldap", schemaVersion = "3.6", friendlyName="LDAP", minMuleVersion="3.6", description="LDAP Connector that allows you to connect to any LDAP server and perform every LDAP operation")
 public class LDAPConnector
 {
     protected final Logger logger = Logger.getLogger(getClass());
