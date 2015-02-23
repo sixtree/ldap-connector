@@ -5,16 +5,6 @@
  * license, a copy of which has been included with this distribution in the
  * LICENSE.md file.
  */
-
-/*
- * Project: Leonards Common Libraries
- * This class is member of leonards.common.ldap
- * File: NoPermissionException.java
- *
- * Property of Leonards / Mindpool
- * Created on Jun 25, 2006 (9:12:54 AM) 
- */
-
 package org.mule.module.ldap.api;
 
 /**

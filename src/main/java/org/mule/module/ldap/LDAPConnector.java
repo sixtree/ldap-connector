@@ -8,12 +8,15 @@
 
 package org.mule.module.ldap;
 
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 
 import org.apache.log4j.Logger;
 import org.mule.api.ConnectionException;
+import org.mule.api.ConnectionExceptionCode;
 import org.mule.api.annotations.ConnectionStrategy;
 import org.mule.api.annotations.Connector;
 import org.mule.api.annotations.MetaDataKeyRetriever;
@@ -35,11 +38,15 @@ import org.mule.common.metadata.MetaDataKey;
 import org.mule.common.metadata.MetaDataModel;
 import org.mule.common.metadata.builder.DefaultMetaDataBuilder;
 import org.mule.common.metadata.builder.DynamicObjectBuilder;
+import org.mule.common.metadata.datatype.DataType;
+import org.mule.module.ldap.api.AuthenticationException;
 import org.mule.module.ldap.api.CommunicationException;
 import org.mule.module.ldap.api.ContextNotEmptyException;
 import org.mule.module.ldap.api.InvalidAttributeException;
 import org.mule.module.ldap.api.LDAPConnection;
 import org.mule.module.ldap.api.LDAPEntry;
+import org.mule.module.ldap.api.LDAPEntryAttributeTypeDefinition;
+import org.mule.module.ldap.api.LDAPEntryObjectClassDefinition;
 import org.mule.module.ldap.api.LDAPException;
 import org.mule.module.ldap.api.LDAPMultiValueEntryAttribute;
 import org.mule.module.ldap.api.LDAPResultSet;
@@ -47,6 +54,7 @@ import org.mule.module.ldap.api.LDAPSearchControls;
 import org.mule.module.ldap.api.LDAPSingleValueEntryAttribute;
 import org.mule.module.ldap.api.LDAPSortKey;
 import org.mule.module.ldap.api.NameNotFoundException;
+import org.mule.module.ldap.api.SyntaxObjectIdentifier;
 import org.mule.streaming.PagingConfiguration;
 import org.mule.streaming.ProviderAwarePagingDelegate;
 import org.mule.util.StringUtils;
@@ -226,7 +234,7 @@ import org.mule.util.StringUtils;
  *
  * @author Mariano Capurro (MuleSoft, Inc.)
  */
-@Connector(name = "ldap", schemaVersion = "3.6", friendlyName="LDAP", minMuleVersion="3.6", description="LDAP Connector that allows you to connect to any LDAP server and perform every LDAP operation")
+@Connector(name = "ldap", schemaVersion = "3.5", friendlyName="LDAP", minMuleVersion="3.5", description="LDAP Connector that allows you to connect to any LDAP server and perform every LDAP operation")
 public class LDAPConnector
 {
     protected final Logger logger = Logger.getLogger(getClass());
@@ -505,16 +513,13 @@ public class LDAPConnector
      * 
      * <p/>
      * For queries returning large results it is recommended to use pagination (not all LDAP servers support this or are configured to support it).
-     * For that you need to provide a page size value that should be less or equal than max results (count limit). If you are getting a
+     * For that you need to provide a fetch size (page size) value that should be less or equal than max results (count limit). If you are getting a
      * Size Limit Exceeded exception message then you should check that the authenticated user has enough privileges or the LDAP server is not
-     * limited by configuration.
+     * limited by configuration. In that case, just reduce the value of the fetch size.
      * <p/>
      * 
-     * <h4>Returning all persons one LDAP entry at a time</h4>
+     * <h4>Returning all persons LDAP entries in pages of 100 entries each</h4>
      * {@sample.xml ../../../doc/mule-module-ldap.xml.sample ldap:paged-result-search-1}
-     * <p/>
-     * <h4>Returning all persons in lists of 100 LDAP entries</h4>
-     * {@sample.xml ../../../doc/mule-module-ldap.xml.sample ldap:paged-result-search-2}
      * 
      * @param baseDn The base DN of the LDAP search.
      * @param filter A valid LDAP filter. The LDAP connector supports LDAP search filters as defined in RFC 2254. Some examples are:
@@ -542,7 +547,7 @@ public class LDAPConnector
      * @param orderBy Name of the LDAP attribute used to sort results.
      * @param ascending If <i>orderBy</i> was set, whether to sort in ascending or descending order.
      * @param structuralObjectClass The type of entry that will be returned. Only for DataSense purposes to be used in Anypoint Studio IDE. Has no impact on runtime, that's why it is optional.
-     * @param pagingConfiguration Paging configuration. If the LDAP server supports paging results set in the fetchSize field of this object the size of the page. If the fetchSize is less or equals than 0, then paging will be disabled.
+     * @param pagingConfiguration Paging configuration. The field fetchSize in this object represents the size of pages Mule will use while iterating (vs pageSize that is an LDAP related attribute used for the amount of LDAP entries retrieved at once while iterating at low level the LDAP results)
      * @return A list with individual results of executing the rest of flow with each results page.
      * @throws org.mule.module.ldap.api.NoPermissionException If the current binded user has no permissions to perform the search under the given base DN.
      * @throws org.mule.module.ldap.api.NameNotFoundException If base DN is invalid (for example it doesn't exist)
@@ -556,6 +561,7 @@ public class LDAPConnector
                                           @Default("ONE_LEVEL") SearchScope scope, @Default("0") @Placement(group = "Search Controls") int timeout,
                                           @Default("0") @Placement(group = "Search Controls") long maxResults,
                                           @Default("false") @Placement(group = "Search Controls") boolean returnObject,
+                                          @Default("0") @Placement(group = "Search Controls") int pageSize,
                                           @FriendlyName("Order by attribute") @Optional @Placement(group = "Search Controls", order = 1) String orderBy,
                                           @FriendlyName("Ascending order?") @Default("true") @Placement(group = "Search Controls", order = 2) boolean ascending,
                                           @Optional @MetaDataKeyParam(affects=MetaDataKeyParamAffectsType.OUTPUT) String structuralObjectClass,
@@ -577,7 +583,7 @@ public class LDAPConnector
         controls.setTimeout(timeout);
         controls.setScope(scope.getValue());
         controls.setReturnObject(returnObject);
-        controls.setPageSize(pagingConfiguration.getFetchSize());
+        controls.setPageSize(pageSize);
         if(StringUtils.isNotBlank(orderBy))
         {
             controls.getSortKeys().add(new LDAPSortKey(orderBy, ascending, null));
@@ -1368,23 +1374,138 @@ public class LDAPConnector
     {
         List<MetaDataKey> keys = new ArrayList<MetaDataKey>();
         
-        
-        keys.add(new DefaultMetaDataKey("person", "person"));
-        keys.add(new DefaultMetaDataKey("organizationalUnit", "organizationalUnit"));
-        keys.add(new DefaultMetaDataKey("person", "person"));
+        try
+        {
+        	List<String> objectClasses = getConnectionStrategy().getConnection().getAllObjectClasses();
+        	
+        	for (String objectClass : objectClasses)
+        	{
+            	keys.add(new DefaultMetaDataKey(objectClass, objectClass));            
+        	}
+        }
+        catch(LDAPException ex)
+        {
+        	throw toConnectionException(ex);
+        }
         return keys;
     }
 
+    public static ConnectionException toConnectionException(Throwable ex)
+    {
+    	if (ex instanceof LDAPException)
+    	{
+    		LDAPException ldapEx = (LDAPException) ex;
+	        if (ex instanceof CommunicationException)
+	        {
+	            if(ldapEx.getCause() instanceof javax.naming.CommunicationException && ((javax.naming.CommunicationException) ldapEx.getCause()).getRootCause() instanceof UnknownHostException)
+	            {
+	                return new ConnectionException(ConnectionExceptionCode.UNKNOWN_HOST, ldapEx.getCode(), ldapEx.getMessage(), ldapEx);
+	            }
+	            else
+	            {
+	            	return new ConnectionException(ConnectionExceptionCode.CANNOT_REACH, ldapEx.getCode(), ldapEx.getMessage(), ldapEx);
+	            }
+	        }
+	        else if (ldapEx instanceof AuthenticationException)
+	        {
+	        	return new ConnectionException(ConnectionExceptionCode.INCORRECT_CREDENTIALS, ldapEx.getCode(), ldapEx.getMessage(), ldapEx);
+	        }
+	        else if (ldapEx instanceof NameNotFoundException)
+	        {
+	        	return new ConnectionException(ConnectionExceptionCode.INCORRECT_CREDENTIALS, ldapEx.getCode(), ldapEx.getMessage(), ldapEx);
+	        }
+	        else
+	        {
+	        	return new ConnectionException(ConnectionExceptionCode.UNKNOWN, ldapEx.getCode(), ldapEx.getMessage(), ldapEx);
+	        }
+    	}
+        else
+        {
+        	return new ConnectionException(ConnectionExceptionCode.UNKNOWN, null, ex.getMessage(), ex);
+        }    	
+    }
+    
     @MetaDataRetriever
     public MetaData getMetaData(MetaDataKey key) throws ConnectionException
     {
-        MetaData metaData = null;
-        DynamicObjectBuilder<?> dynamicObject = new DefaultMetaDataBuilder().createDynamicObject(key.getId());
-        MetaDataModel model = dynamicObject.build();
-        metaData = new DefaultMetaData(model);
-        return metaData;
+        try
+        {
+	    	LDAPEntryObjectClassDefinition objectClass = getConnectionStrategy().getConnection().getObjectClassDefinition(key.getId());
+	     
+	    	MetaData metaData = null;
+	        DynamicObjectBuilder<?> dynamicObject = new DefaultMetaDataBuilder().createDynamicObject(key.getId());
+	        
+	        addAttributesMetaData(objectClass.getMust(), dynamicObject, true);
+	        addAttributesMetaData(objectClass.getMay(), dynamicObject, false);
+	        
+	        // Trasverse objectlasses structure
+	        transverseObjectClassHierarchy(objectClass, dynamicObject);
+	        
+	        MetaDataModel model = dynamicObject.build();
+	        metaData = new DefaultMetaData(model);
+	        return metaData;
+        }
+        catch(LDAPException ex)
+        {
+        	throw toConnectionException(ex);
+        }
     }
 
+    private void transverseObjectClassHierarchy(LDAPEntryObjectClassDefinition objectClass, DynamicObjectBuilder<?> dynamicObject) throws LDAPException
+    {
+    	if (objectClass != null)
+    	{
+	        addAttributesMetaData(objectClass.getMust(), dynamicObject, true);
+	        addAttributesMetaData(objectClass.getMay(), dynamicObject, false);
+	        
+	        if (objectClass.getSupName() != null && !"top".equalsIgnoreCase(objectClass.getSupName()))
+	        {
+	        	LDAPEntryObjectClassDefinition parentObjectClass = getConnectionStrategy().getConnection().getObjectClassDefinition(objectClass.getSupName());
+	        	transverseObjectClassHierarchy(parentObjectClass, dynamicObject);
+	        }
+    	}
+    }
+    
+	private void addAttributesMetaData(List<String> attributes, DynamicObjectBuilder<?> dynamicObject, boolean required) throws LDAPException
+	{
+		if (attributes != null)
+		{
+			for (String attribute : attributes)
+			{
+				LDAPEntryAttributeTypeDefinition attributeDefinition = getConnectionStrategy().getConnection().getAttributeTypeDefinition(attribute);
+
+				if (attributeDefinition.isSingleValue())
+				{
+			    	dynamicObject.addSimpleField(attributeDefinition.getName(), getDataType(attributeDefinition), attributeDefinition.getDescription());
+				}
+				else
+				{
+					dynamicObject.addList(attributeDefinition.getName()).ofSimpleField(getDataType(attributeDefinition));
+				}
+			}
+		}
+	}
+
+    // TODO: Does it makes sense to handle more types?
+    private DataType getDataType(LDAPEntryAttributeTypeDefinition attribute)
+    {
+    	try
+    	{
+        	if (SyntaxObjectIdentifier.isHumanReadable(attribute.getSyntax()))
+        	{
+        		return DataType.STRING;
+        	}
+        	else
+        	{
+        		return DataType.BYTE; // any type for byte[]?
+        	}
+    	}
+    	catch(NoSuchElementException ex)
+    	{
+    		return DataType.STRING;
+    	}
+    }
+    
     public LDAPCacheConnection getConnectionStrategy()
     {
         return connectionStrategy;

@@ -28,6 +28,7 @@ import org.apache.log4j.Logger;
 import org.mule.module.ldap.api.LDAPEntry;
 import org.mule.module.ldap.api.LDAPEntryAttribute;
 import org.mule.module.ldap.api.LDAPEntryAttributeTypeDefinition;
+import org.mule.module.ldap.api.LDAPEntryObjectClassDefinition;
 import org.mule.module.ldap.api.LDAPException;
 import org.mule.module.ldap.api.LDAPMultiValueEntryAttribute;
 import org.mule.module.ldap.api.LDAPSchemaAware;
@@ -145,6 +146,66 @@ public class LDAPJNDIUtils
             return defaultValue;
         }
     }
+
+    private static List<String> getMultiValueAsStringList(Attribute attribute) throws NamingException
+    {
+        if (attribute != null)
+        {
+        	List<String> valuesList = new ArrayList<String>(attribute.size());
+        	for (int i=0; i < attribute.size(); i++)
+        	{
+        		Object value = attribute.get(i);
+        		if (value != null)
+        		{
+            		valuesList.add(value.toString());
+        		}
+        	}
+            
+            return valuesList;
+        }
+        else
+        {
+            return null;
+        }
+    }
+    
+    public static LDAPEntryObjectClassDefinition buildObjectClassDefinition(Attributes attributes) throws LDAPException
+    {
+    	LDAPEntryObjectClassDefinition objectClassDefinition = null;
+        if (attributes != null)
+        {
+            try
+            {
+            	objectClassDefinition = new LDAPEntryObjectClassDefinition();
+
+                for (NamingEnumeration<?> attrs = attributes.getAll(); attrs.hasMore();)
+                {
+                    Attribute attr = (Attribute) attrs.nextElement();
+                    String attrName = attr.getID();
+                    if (!LDAPEntryObjectClassDefinition.MAY.equalsIgnoreCase(attrName) && !LDAPEntryObjectClassDefinition.MUST.equalsIgnoreCase(attrName)) 
+                    {
+                        String attrValue = getSingleValueAsString(attr, null);
+                        if (attrName != null && attrValue != null)
+                        {
+                        	objectClassDefinition.set(attrName, attrValue);
+                        }
+                    } else {
+                    	List<String> attrValues = getMultiValueAsStringList(attr);
+                    	if (attrValues != null)
+                    	{
+                    		objectClassDefinition.set(attrName, attrValues);
+                    	}
+                    }
+                }
+            }
+            catch (NamingException nex)
+            {
+                throw LDAPException.create(nex);
+            }
+        }
+        return objectClassDefinition;
+    	
+    }
     
     public static LDAPEntryAttributeTypeDefinition buildAttributeTypeDefinition(Attributes attributes) throws LDAPException
     {
@@ -254,7 +315,7 @@ public class LDAPJNDIUtils
                 return SearchControls.ONELEVEL_SCOPE;
             case LDAPSearchControls.SUBTREE_SCOPE :
                 return SearchControls.SUBTREE_SCOPE;
-            default :
+            default:
                 return SearchControls.ONELEVEL_SCOPE;
         }
     } 

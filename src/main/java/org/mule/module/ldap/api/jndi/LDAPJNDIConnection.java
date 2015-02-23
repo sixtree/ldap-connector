@@ -17,12 +17,15 @@
 
 package org.mule.module.ldap.api.jndi;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
+import javax.naming.Binding;
 import javax.naming.Context;
 import javax.naming.NamingEnumeration;
 import javax.naming.NamingException;
@@ -766,7 +769,6 @@ public class LDAPJNDIConnection extends LDAPConnection
     @Override
     public void updateAttribute(String dn, LDAPEntryAttribute attribute) throws LDAPException
     {
-
         try
         {
             ModificationItem[] mods = new ModificationItem[1];
@@ -873,9 +875,71 @@ public class LDAPJNDIConnection extends LDAPConnection
         }
     }
     
+    @Override
+    public List<String> getAllObjectClasses() throws LDAPException
+    {
+        DirContext schema = null;
+        DirContext attrSchema = null;
+        try
+        {
+            // Get the schema tree root
+            schema = getConn().getSchema("");
+
+            if (logger.isDebugEnabled())
+            {
+                logger.debug("About to retrieve all object classes");
+            }
+            
+            NamingEnumeration<Binding> bindings = schema.listBindings("ClassDefinition");
+            List<String> objectClasses = new ArrayList<String>(200);
+            while (bindings.hasMore())
+            {
+                Binding binding = bindings.next();
+                objectClasses.add(binding.getName());
+            }
+            
+            return objectClasses;
+        }
+        catch(NamingException nex)
+        {
+            throw handleNamingException(nex, "Get all object classes failed.");
+        }
+        finally
+        {
+            silentyCloseDirContect(attrSchema);
+            silentyCloseDirContect(schema);
+        }    	
+    }
+    
+    @Override
     public LDAPEntryObjectClassDefinition getObjectClassDefinition(String objectClassName) throws LDAPException
     {
-        return null;
+        DirContext schema = null;
+        DirContext attrSchema = null;
+        try
+        {
+            // Get the schema tree root
+            schema = getConn().getSchema("");
+
+            if (logger.isDebugEnabled())
+            {
+                logger.debug("About to retrieve class definition for objectClass " + objectClassName);
+            }
+            
+            // Get the schema object for "objectClassName"
+            attrSchema = (DirContext) schema.lookup("ClassDefinition/" + objectClassName);   
+            
+            return LDAPJNDIUtils.buildObjectClassDefinition(attrSchema.getAttributes(""));
+        }
+        catch(NamingException nex)
+        {
+            throw handleNamingException(nex, "Get class definition for objectClass " + objectClassName + " failed.");
+        }
+        finally
+        {
+            silentyCloseDirContect(attrSchema);
+            silentyCloseDirContect(schema);
+        }
     }
     
     /**

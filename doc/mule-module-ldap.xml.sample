@@ -85,19 +85,9 @@
 <!-- END_INCLUDE(ldap:search-3) -->
 
 <!-- BEGIN_INCLUDE(ldap:paged-result-search-1) -->
-	<!-- Case 1: Paging control to retrieve pages of 100 entries from the LDAP server returning one entry at a time -->
-    <ldap:paged-result-search baseDn="ou=people,dc=mulesoft,dc=org" filter="(objectClass=person)" scope="SUB_TREE" pageSize="100" resultPageSize="1"/>
+	<!-- Case 1: Paging control to retrieve pages of 100 entries from the LDAP server returning a consumer iterator with pages of 50 records -->
+    <ldap:paged-result-search baseDn="ou=people,dc=mulesoft,dc=org" filter="(objectClass=person)" scope="SUB_TREE" pageSize="100" fetchSize="50"/>
 <!-- END_INCLUDE(ldap:paged-result-search-1) -->
-
-<!-- BEGIN_INCLUDE(ldap:paged-result-search-2) -->
-	<!-- Case 2: Return lists of 100 LDAP entries -->
-    <ldap:paged-result-search baseDn="ou=people,dc=mulesoft,dc=org" filter="(objectClass=person)" scope="SUB_TREE" resultPageSize="100">
-        <ldap:attributes>
-        	<ldap:attribute>uid</ldap:attribute>
-        	<ldap:attribute>cn</ldap:attribute>
-        </ldap:attributes>    
-    </ldap:paged-result-search>
-<!-- END_INCLUDE(ldap:paged-result-search-2) -->
 
 <!-- BEGIN_INCLUDE(ldap:search-one-1) -->
 	<!-- Case 1: Simple SUB_TREE search returning the first result -->

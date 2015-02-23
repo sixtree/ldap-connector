@@ -5,16 +5,6 @@
  * license, a copy of which has been included with this distribution in the
  * LICENSE.md file.
  */
-
-/*
- * Project: Leonards Common Libraries
- * This class is member of leonards.common.ldap
- * File: NameNotFoundException.java
- *
- * Property of Leonards / Mindpool
- * Created on Jun 23, 2006 (12:56:19 AM) 
- */
-
 package org.mule.module.ldap.api;
 
 /**

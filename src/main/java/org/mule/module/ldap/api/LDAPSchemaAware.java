@@ -10,6 +10,8 @@
 
 package org.mule.module.ldap.api;
 
+import java.util.List;
+
 public interface LDAPSchemaAware
 {
     /**
@@ -25,6 +27,21 @@ public interface LDAPSchemaAware
      * @throws LDAPException
      */
     LDAPEntryAttributeTypeDefinition getAttributeTypeDefinition(String attributeName) throws LDAPException;
+    
+    /**
+     * 
+     * @param objectClassName
+     * @return
+     * @throws LDAPException
+     */
+    LDAPEntryObjectClassDefinition getObjectClassDefinition(String objectClassName) throws LDAPException;
+
+    /**
+     * 
+     * @return
+     * @throws LDAPException
+     */
+    List<String> getAllObjectClasses() throws LDAPException;
 }
 
 

@@ -7,7 +7,6 @@
  */
 package org.mule.module.ldap;
 
-import java.net.UnknownHostException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Map;
@@ -29,12 +28,9 @@ import org.mule.api.annotations.display.Placement;
 import org.mule.api.annotations.param.ConnectionKey;
 import org.mule.api.annotations.param.Default;
 import org.mule.api.annotations.param.Optional;
-import org.mule.module.ldap.api.AuthenticationException;
-import org.mule.module.ldap.api.CommunicationException;
 import org.mule.module.ldap.api.LDAPConnection;
 import org.mule.module.ldap.api.LDAPEntry;
 import org.mule.module.ldap.api.LDAPException;
-import org.mule.module.ldap.api.NameNotFoundException;
 
 @ConnectionManagement(friendlyName="LDAP")
 public class LDAPCacheConnection
@@ -171,35 +167,12 @@ public class LDAPCacheConnection
                 this.connection.bind(authDn, authPassword);
             }
         }
-        catch(CommunicationException ex)
-        {
-            if(ex.getCause() instanceof javax.naming.CommunicationException && ((javax.naming.CommunicationException) ex.getCause()).getRootCause() instanceof UnknownHostException)
-            {
-                throw new ConnectionException(ConnectionExceptionCode.UNKNOWN_HOST, ex.getCode(), ex.getMessage(), ex);
-            }
-            else
-            {
-                throw new ConnectionException(ConnectionExceptionCode.CANNOT_REACH, ex.getCode(), ex.getMessage(), ex);
-            }
-        }
-        catch(AuthenticationException ex)
-        {
-            throw new ConnectionException(ConnectionExceptionCode.INCORRECT_CREDENTIALS, ex.getCode(), ex.getMessage(), ex);
-        }
-        catch(NameNotFoundException ex)
-        {
-            throw new ConnectionException(ConnectionExceptionCode.INCORRECT_CREDENTIALS, ex.getCode(), ex.getMessage(), ex);
-        }
-        catch(LDAPException ex)
-        {
-            throw new ConnectionException(ConnectionExceptionCode.UNKNOWN, ex.getCode(), ex.getMessage(), ex);
-        }
         catch(Throwable ex)
         {
-            throw new ConnectionException(ConnectionExceptionCode.UNKNOWN, null, ex.getMessage(), ex);
+            throw LDAPConnector.toConnectionException(ex);
         }
     }
-
+    
     /**
      * Disconnect the current connection
      */

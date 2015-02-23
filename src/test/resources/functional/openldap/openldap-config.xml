@@ -27,7 +27,7 @@
         http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
         http://www.mulesoft.org/schema/mule/ldap http://www.mulesoft.org/schema/mule/ldap/current/mule-ldap.xsd">
  
-	<ldap:config name="adminConf" url="ldaps://ldap-qa.cloudhub.io:3636/" authDn="cn=Manager,dc=muleforge,dc=org" authPassword="">
+	<ldap:config name="adminConf" url="ldaps://ldap-qa.cloudhub.io:3636/" authDn="cn=Manager,dc=muleforge,dc=org" authPassword="Ooxae7aiJa">
         <ldap:extended-configuration>
             <ldap:extended-configuration key="java.naming.ldap.factory.socket">org.mule.module.ldap.security.BypassTrustSSLSocketFactory</ldap:extended-configuration>
         </ldap:extended-configuration>
