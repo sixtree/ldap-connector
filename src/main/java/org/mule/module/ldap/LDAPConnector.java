@@ -15,9 +15,12 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
+import javax.inject.Inject;
+
 import org.apache.log4j.Logger;
 import org.mule.api.ConnectionException;
 import org.mule.api.ConnectionExceptionCode;
+import org.mule.api.MuleEvent;
 import org.mule.api.annotations.Category;
 import org.mule.api.annotations.Configurable;
 import org.mule.api.annotations.Connect;
@@ -675,6 +678,7 @@ public class LDAPConnector
      * @param orderBy Name of the LDAP attribute used to sort results.
      * @param ascending If <i>orderBy</i> was set, whether to sort in ascending or descending order.
      * @param callback Intercepting callback (stream paged results)
+     * @param event Mule Event
      * @return A list with individual results of executing the rest of flow with each results page.
      * @throws org.mule.module.ldap.api.NoPermissionException If the current binded user has no permissions to perform the search under the given base DN.
      * @throws org.mule.module.ldap.api.NameNotFoundException If base DN is invalid (for example it doesn't exist)
@@ -682,6 +686,7 @@ public class LDAPConnector
      * @throws Exception In case there is any other error performing the search.
      */
     @Processor(intercepting=true)
+    @Inject
     @InvalidateConnectionOn(exception = CommunicationException.class)
     public List<Object> pagedResultSearch(@FriendlyName("Base DN") String baseDn, String filter, @Optional List<String> attributes,
                                           @Optional @Default("ONE_LEVEL") SearchScope scope, @Optional @Default("0") @Placement(group = "Search Controls") int timeout,
@@ -693,7 +698,7 @@ public class LDAPConnector
                                           @Optional @Default("0") @Placement(group = "Results Paging") int resultPageCount,
                                           @FriendlyName("Order by attribute") @Optional @Placement(group = "Search Controls", order = 1) String orderBy,
                                           @FriendlyName("Ascending order?") @Optional @Default("true") @Placement(group = "Search Controls", order = 2) boolean ascending,
-                                          SourceCallback callback) throws Exception
+                                          SourceCallback callback, MuleEvent event) throws Exception
     {
         LDAPResultSet result = null;
         List<Object> flowResults = new ArrayList<Object>();
@@ -727,7 +732,7 @@ public class LDAPConnector
             
             LDAPEntry anEntry = null;
             int entryCount = 0, pageCount = 0;
-            Object flowResult;
+            MuleEvent flowResult;
             
             if(resultPageSize == 1)
             {
@@ -747,11 +752,12 @@ public class LDAPConnector
                         logger.debug("Entry " + entryCount + " -> " + anEntry);
                     }
                     
-                    flowResult = callback.process(anEntry);
+                    event.getMessage().setPayload(anEntry);
+                    flowResult = callback.processEvent(event);
                     
                     if(flowResult != null)
                     {
-                        flowResults.add(flowResult);
+                        flowResults.add(flowResult.getMessage().getPayload());
                     }
                     
                     if(logger.isDebugEnabled())
@@ -793,11 +799,12 @@ public class LDAPConnector
                         logger.debug("Page " + pageCount + " -> " + page);
                     }
                     
-                    flowResult = callback.process(page);
+                    event.getMessage().setPayload(page);
+                    flowResult = callback.processEvent(event);
                     
                     if(flowResult != null)
                     {
-                        flowResults.add(flowResult);
+                        flowResults.add(flowResult.getMessage().getPayload());
                     }
                     
                     if(logger.isDebugEnabled())
