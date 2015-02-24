@@ -69,15 +69,17 @@
 	</flow>
 
     <flow name="testPagedResultSearchAsyncFlow">
+    	<set-variable variableName="attributeName" value="cn"/>
     	<ldap:paged-result-search config-ref="adminConf" baseDn="ou=people,dc=mulesoft,dc=org" filter="#[payload:]" scope="SUB_TREE" />
         <async>
-            <set-payload value="#[payload.getAttribute('cn').getValue()]" />
+            <set-payload value="#[payload.getAttribute(flowVars.attributeName).getValue()]" />
         </async>	
 	</flow>
 
     <flow name="testPagedResultSearchSortFlow">
+    	<set-variable variableName="attributeName" value="cn"/>
     	<ldap:paged-result-search config-ref="adminConf" baseDn="ou=people,dc=mulesoft,dc=org" filter="#[payload:]" scope="SUB_TREE" orderBy="cn" ascending="true"/>
-    	<set-payload value="#[payload.getAttribute('cn').getValue()]" />
+    	<set-payload value="#[payload.getAttribute(flowVars.attributeName).getValue()]" />
 	</flow>
 	
 	<!--     
