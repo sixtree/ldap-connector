@@ -26,9 +26,12 @@ public abstract class LDAPConnection implements LDAPSchemaAware
     protected final Log logger = LogFactory.getLog(getClass());
 
     public static final boolean DEFAULT_SCHEMA_ENABLED = false;
+    public static final boolean DEFAULT_TLS_ENABLED = false;
+    
     protected static final Map<String, Class<?>> CONNECTION_IMPLEMENTATIONS = new HashMap<String, Class<?>>();
 
     private boolean schemaEnabled = DEFAULT_SCHEMA_ENABLED;
+    private boolean tlsEnabled = DEFAULT_TLS_ENABLED;
 
     static
     {
@@ -45,6 +48,7 @@ public abstract class LDAPConnection implements LDAPSchemaAware
     public static final String POOL_TIMEOUT_ATTR = "poolTimeout";
     public static final String REFERRAL_ATTR = "referral";
     public static final String SCHEMA_ENABLED = "schema-enabled";
+    public static final String TLS_ENABLED = "tls-enabled";
     
     /**
 	 * 
@@ -67,13 +71,18 @@ public abstract class LDAPConnection implements LDAPSchemaAware
     {
         return getConnection(type, url, authentication, new HashMap<String, String>());
     }
-    
+
     public static LDAPConnection getConnection(String type, String url, String authentication, int initialPoolSize, int maxPoolSize, long poolTimeout, String referral, Map<String, String> extendedConf) throws LDAPException
     {
-        return getConnection(type, url, authentication, initialPoolSize, maxPoolSize, poolTimeout, referral, extendedConf, DEFAULT_SCHEMA_ENABLED);        
+        return getConnection(type, url, authentication, initialPoolSize, maxPoolSize, poolTimeout, referral, extendedConf, DEFAULT_SCHEMA_ENABLED, DEFAULT_TLS_ENABLED);        
     }    
 
     public static LDAPConnection getConnection(String type, String url, String authentication, int initialPoolSize, int maxPoolSize, long poolTimeout, String referral, Map<String, String> extendedConf, boolean schemaEnabled) throws LDAPException
+    {
+        return getConnection(type, url, authentication, initialPoolSize, maxPoolSize, poolTimeout, referral, extendedConf, schemaEnabled, DEFAULT_TLS_ENABLED);        
+    }    
+
+    public static LDAPConnection getConnection(String type, String url, String authentication, int initialPoolSize, int maxPoolSize, long poolTimeout, String referral, Map<String, String> extendedConf, boolean schemaEnabled, boolean tlsEnabled) throws LDAPException
     {
         Map<String, String> conf = extendedConf != null ? new HashMap<String, String>(extendedConf) : new HashMap<String, String>();
         conf.put(CONNECTION_TYPE_ATTR, type);
@@ -84,6 +93,7 @@ public abstract class LDAPConnection implements LDAPSchemaAware
         conf.put(MAX_POOL_CONNECTIONS_ATTR, String.valueOf(maxPoolSize));
         conf.put(POOL_TIMEOUT_ATTR, String.valueOf(poolTimeout));
         conf.put(SCHEMA_ENABLED, String.valueOf(schemaEnabled));
+        conf.put(TLS_ENABLED, String.valueOf(tlsEnabled));
         
         return getConnection(conf);        
     }    
@@ -270,5 +280,13 @@ public abstract class LDAPConnection implements LDAPSchemaAware
     public void setSchemaEnabled(boolean schemaEnabled)
     {
         this.schemaEnabled = schemaEnabled;
-    }    
+    }
+
+	public boolean isTlsEnabled() {
+		return tlsEnabled;
+	}
+
+	public void setTlsEnabled(boolean tlsEnabled) {
+		this.tlsEnabled = tlsEnabled;
+	}    
 }

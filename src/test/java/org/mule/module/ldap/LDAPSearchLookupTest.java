@@ -112,6 +112,7 @@ public class LDAPSearchLookupTest extends AbstractLDAPConnectorEmbeddedLDAPTest
     } 
     
     @Test
+    @Ignore
     public void testUnsupportedSortControl() throws Exception
     {
         Throwable ex = (Throwable) runFlowWithPayloadAndReturnException("testPagedResultSearchSortFlow", "(uid=user*)");

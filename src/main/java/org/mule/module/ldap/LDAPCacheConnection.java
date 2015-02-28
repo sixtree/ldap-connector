@@ -32,8 +32,8 @@ import org.mule.module.ldap.api.LDAPConnection;
 import org.mule.module.ldap.api.LDAPEntry;
 import org.mule.module.ldap.api.LDAPException;
 
-@ConnectionManagement(friendlyName="LDAP")
-public class LDAPCacheConnection
+@ConnectionManagement(friendlyName="Config", configElementName="config")
+public class LDAPCacheConnection implements LDAPConnectionStrategy
 {
     protected final Logger logger = Logger.getLogger(getClass());
 
@@ -98,14 +98,14 @@ public class LDAPCacheConnection
     /**
      * If set to true, the LDAP connector will use the LDAP schema (only works for LDAP v3) to define the structure of the LDAP entry (or map). This needs to be 'true'
      * in order to use DataSense as it will affect the implementing class of {@link LDAPEntry} attributes.
-     * @since 1.3.1
+     * @since 2.0.0
      */
     @Configurable
     @Default(value = "false")
     @Placement(group = "General")
     private boolean schemaEnabled;
     
-    /**
+	/**
      * 
      */
     public LDAPCacheConnection()
@@ -176,6 +176,7 @@ public class LDAPCacheConnection
     /**
      * Disconnect the current connection
      */
+    @Override
     @Disconnect
     public void disconnect()
     {
@@ -313,6 +314,7 @@ public class LDAPCacheConnection
         this.schemaEnabled = schemaEnabled;
     }
 
+    @Override
     public LDAPConnection getConnection()
     {
         return connection;

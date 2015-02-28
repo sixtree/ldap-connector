@@ -45,6 +45,7 @@ import org.mule.module.ldap.api.ContextNotEmptyException;
 import org.mule.module.ldap.api.InvalidAttributeException;
 import org.mule.module.ldap.api.LDAPConnection;
 import org.mule.module.ldap.api.LDAPEntry;
+import org.mule.module.ldap.api.LDAPEntryAttribute;
 import org.mule.module.ldap.api.LDAPEntryAttributeTypeDefinition;
 import org.mule.module.ldap.api.LDAPEntryObjectClassDefinition;
 import org.mule.module.ldap.api.LDAPException;
@@ -237,10 +238,14 @@ import org.mule.util.StringUtils;
 @Connector(name = "ldap", schemaVersion = "3.5", friendlyName="LDAP", minMuleVersion="3.5", description="LDAP Connector that allows you to connect to any LDAP server and perform every LDAP operation")
 public class LDAPConnector
 {
-    protected final Logger logger = Logger.getLogger(getClass());
+    private static final String TOP_OBJECT_CLASS = "top";
+
+	private static final String OBJECT_CLASS_ATTR_NAME = "objectClass";
+
+	protected final Logger logger = Logger.getLogger(getClass());
 
     @ConnectionStrategy
-    private LDAPCacheConnection connectionStrategy;
+    private LDAPConnectionStrategy connectionStrategy;
     
     // Operations
     /**
@@ -667,7 +672,8 @@ public class LDAPConnector
      * {@sample.xml ../../../doc/mule-module-ldap.xml.sample ldap:add-2}
      * 
      * @param entry The {@link LDAPEntry} that should be added.
-     * @param structuralObjectClass The type of entry that will be added. Only for DataSense purposes to be used in Anypoint Studio IDE. Has no impact on runtime, that's why it is optional.
+     * @param structuralObjectClass The type of entry that will be added. If the entry doesn't have the objectClass attribute set, then this one will be used to retrieved the whole objectClass hierarchy. 
+     *                              If performance is a requirement, don't rely on this functionality as several calls to the LDAP server will be done to trasverse the object class hierarchy.
      * @throws org.mule.module.ldap.api.NoPermissionException If the current binded user has no permissions to add entries under any of the RDN (relative DN) that compose the entry DN.
      * @throws org.mule.module.ldap.api.InvalidAttributeException If the structure of the entry is invalid (for example there are missing required attributes or it has attributes that
      *         are not part of any of the defined object classes)
@@ -681,6 +687,9 @@ public class LDAPConnector
     {
         LDAPEntry ldapEntry = mapToLDAPEntry(entry);
         
+        // Validate objectClass and add values based on structuralObjectClass
+        processObjectClass(ldapEntry, structuralObjectClass);
+        
         if(logger.isDebugEnabled())
         {
             logger.debug("About to add entry " + ldapEntry.getDn() + ": " + entry);
@@ -692,6 +701,50 @@ public class LDAPConnector
         {
             logger.info("Added entry " + ldapEntry.getDn());
         }
+    }
+    
+    private void processObjectClass(LDAPEntry entry, String structuralObjectClass)
+    {
+    	if (entry != null && structuralObjectClass != null)
+    	{
+        	LDAPEntryAttribute objectClassAttribute = entry.getAttribute(OBJECT_CLASS_ATTR_NAME);
+        	if (objectClassAttribute != null)
+        	{
+        		List<Object> objectClasses = objectClassAttribute.getValues();
+        		if (!objectClasses.contains(structuralObjectClass))
+        		{
+        			logger.warn("Entry " + entry.getDn() + " does not contain the specified structural objectClass " + structuralObjectClass + ". Defined objectClasses are: " + objectClasses);
+        		}
+        		else
+        		{
+        			if (logger.isDebugEnabled())
+        			{
+            			logger.debug("Entry " + entry.getDn() + " contains the specified structural objectClass " + structuralObjectClass + ". Defined objectClasses are: " + objectClasses);
+        			}
+        		}
+        	}
+        	else
+        	{
+        		logger.debug("Entry " + entry.getDn() + " does not contain objectClass attribute. Setting objectClasses based on " + structuralObjectClass + " hierarchy");
+        		
+        		List<String> objectClasses;
+    			try
+    			{
+    				// TODO: Will it be necessary to cache this values?
+    				// If the user provides the objectClass values this code is never executed
+    				objectClasses = getObjectClassHierarchyFor(structuralObjectClass);
+
+    				logger.debug("Setting objectClass values " + objectClasses + " to entry " + entry.getDn());
+    	    		
+    	    		entry.addAttribute(OBJECT_CLASS_ATTR_NAME, objectClasses);
+    			}
+    			catch (LDAPException ex)
+    			{
+    				logger.warn("Could not retrieve objectClass hierarchy for " + structuralObjectClass, ex);
+    			}
+        		
+        	}    		
+    	}
     }
     
     /**
@@ -761,8 +814,8 @@ public class LDAPConnector
     }
     
     /**
-     * Updates an existing {@link LDAPEntry} in the LDAP server. The entry should contain an existing distinguished name (DN), the <i>objectClass</i>
-     * attributes that define its structure and at least a value for all the required attributes (required attributes depend on the
+     * Updates an existing {@link LDAPEntry} in the LDAP server. The entry should contain an existing distinguished name (DN),
+     * and at least a value for all the required attributes (required attributes depend on the
      * <i>object classes</i> assigned to the entry. You can refer to RFC 4519 for standard object classes and attributes.
      * <p/>
      * When updating a LDAP entry, only the attributes in the entry passed as parameter are updated or added. If you
@@ -1425,6 +1478,33 @@ public class LDAPConnector
         }    	
     }
     
+    private List<String> getObjectClassHierarchyFor(String objectClass) throws LDAPException
+    {
+    	List<String> objectClasses = new ArrayList<String>();
+    	LDAPEntryObjectClassDefinition objectClassDefinition = getConnectionStrategy().getConnection().getObjectClassDefinition(objectClass);
+    	
+    	objectClasses.add(objectClassDefinition.getName());
+    	
+    	transverseObjectClassHierarchy(objectClassDefinition.getSupName(), objectClasses);
+    	
+    	return objectClasses;
+    }
+    
+    private void transverseObjectClassHierarchy(String supObjectClass, List<String> objectClasses) throws LDAPException
+    {
+    	if (supObjectClass != null)
+    	{
+    		objectClasses.add(supObjectClass);
+
+    		if (supObjectClass != null && !TOP_OBJECT_CLASS.equalsIgnoreCase(supObjectClass))
+        	{
+            	LDAPEntryObjectClassDefinition objectClassDefinition = getConnectionStrategy().getConnection().getObjectClassDefinition(supObjectClass);
+            	transverseObjectClassHierarchy(objectClassDefinition.getSupName(), objectClasses);
+        	}
+    	}
+    }
+
+    
     @MetaDataRetriever
     public MetaData getMetaData(MetaDataKey key) throws ConnectionException
     {
@@ -1434,9 +1514,6 @@ public class LDAPConnector
 	     
 	    	MetaData metaData = null;
 	        DynamicObjectBuilder<?> dynamicObject = new DefaultMetaDataBuilder().createDynamicObject(key.getId());
-	        
-	        addAttributesMetaData(objectClass.getMust(), dynamicObject, true);
-	        addAttributesMetaData(objectClass.getMay(), dynamicObject, false);
 	        
 	        // Trasverse objectlasses structure
 	        transverseObjectClassHierarchy(objectClass, dynamicObject);
@@ -1458,7 +1535,7 @@ public class LDAPConnector
 	        addAttributesMetaData(objectClass.getMust(), dynamicObject, true);
 	        addAttributesMetaData(objectClass.getMay(), dynamicObject, false);
 	        
-	        if (objectClass.getSupName() != null && !"top".equalsIgnoreCase(objectClass.getSupName()))
+	        if (objectClass.getSupName() != null && !TOP_OBJECT_CLASS.equalsIgnoreCase(objectClass.getSupName()))
 	        {
 	        	LDAPEntryObjectClassDefinition parentObjectClass = getConnectionStrategy().getConnection().getObjectClassDefinition(objectClass.getSupName());
 	        	transverseObjectClassHierarchy(parentObjectClass, dynamicObject);
@@ -1506,12 +1583,12 @@ public class LDAPConnector
     	}
     }
     
-    public LDAPCacheConnection getConnectionStrategy()
+    public LDAPConnectionStrategy getConnectionStrategy()
     {
         return connectionStrategy;
     }
 
-    public void setConnectionStrategy(LDAPCacheConnection connectionStrategy)
+    public void setConnectionStrategy(LDAPConnectionStrategy connectionStrategy)
     {
         this.connectionStrategy = connectionStrategy;
     }

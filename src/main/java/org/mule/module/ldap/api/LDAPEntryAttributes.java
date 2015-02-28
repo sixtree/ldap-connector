@@ -6,15 +6,6 @@
  * LICENSE.md file.
  */
 
-/*
- * Project: Leonards Common Libraries
- * This class is member of leonards.common.ldap
- * File: LDAPEntryAttributes.java
- *
- * Property of Leonards / Mindpool
- * Created on Jun 25, 2006 (11:40:32 AM) 
- */
-
 package org.mule.module.ldap.api;
 
 import java.io.Serializable;

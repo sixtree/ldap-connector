@@ -6,18 +6,11 @@
  * LICENSE.md file.
  */
 
-/*
- * Project: Leonards Common Libraries
- * This class is member of org.mule.modules.ldap.jndi
- * File: LDAPJNDIConnection.java
- *
- * Property of Leonards / Mindpool
- * Created on Jun 22, 2006 (10:43:40 PM) 
- */
-
 package org.mule.module.ldap.api.jndi;
 
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.Iterator;
@@ -37,6 +30,9 @@ import javax.naming.directory.ModificationItem;
 import javax.naming.directory.SearchResult;
 import javax.naming.ldap.InitialLdapContext;
 import javax.naming.ldap.LdapContext;
+import javax.naming.ldap.StartTlsRequest;
+import javax.naming.ldap.StartTlsResponse;
+import javax.net.ssl.SSLSession;
 
 import org.apache.commons.lang.StringUtils;
 import org.mule.module.ldap.api.LDAPConnection;
@@ -92,6 +88,7 @@ public class LDAPJNDIConnection extends LDAPConnection
     private LoadingCache<String, LDAPEntryAttributeTypeDefinition> schemaCache = null;
     
     private LdapContext conn = null;
+    private StartTlsResponse tls = null;
 
     /**
 	 * 
@@ -236,6 +233,10 @@ public class LDAPJNDIConnection extends LDAPConnection
             setSchemaEnabled("true".equals(getConfValue(conf, SCHEMA_ENABLED, String.valueOf(DEFAULT_SCHEMA_ENABLED))));
             initializeCache();
             extendedEnvironment.remove(SCHEMA_ENABLED);
+
+            setTlsEnabled("true".equals(getConfValue(conf, TLS_ENABLED, String.valueOf(DEFAULT_TLS_ENABLED))));
+            extendedEnvironment.remove(TLS_ENABLED);
+            
         }
     }
 
@@ -268,6 +269,7 @@ public class LDAPJNDIConnection extends LDAPConnection
         StringBuilder conf = new StringBuilder();
 
         conf.append("{");
+        conf.append("tls: " + isTlsEnabled() + ", ");
         conf.append("url: " + getProviderUrl() + ", ");
         conf.append("authentication: " + getAuthentication() + ", ");
         if (!isNoAuthentication() && StringUtils.isNotEmpty(bindDn))
@@ -330,17 +332,31 @@ public class LDAPJNDIConnection extends LDAPConnection
             String connectionId = toString();
             try
             {
-                
-                getConn().close();
-                logger.info("Connection " + connectionId + " closed.");
+            	if (isTlsEnabled() && this.tls != null)
+            	{
+            		tls.close();
+                    logger.info("Connection " + connectionId + " closed.");
+            	}
             }
-            catch (NamingException nex)
+            catch(IOException ex)
             {
-                throw handleNamingException(nex, "Close connection " + connectionId + " failed.");
-            } 
+                throw handleException(ex, "Close TLS for connection " + connectionId + " failed.");
+            }
             finally
             {
-                setConn(null);
+                try
+                {
+                    getConn().close();
+                    logger.info("Connection " + connectionId + " closed.");
+                }
+                catch (NamingException nex)
+                {
+                    throw handleNamingException(nex, "Close connection " + connectionId + " failed.");
+                } 
+                finally
+                {
+                    setConn(null);
+                }
             }
         } 
         else
@@ -410,7 +426,7 @@ public class LDAPJNDIConnection extends LDAPConnection
         
         if(logger.isDebugEnabled())
         {
-            logger.debug("Created environment: " + env);
+            logger.debug("Created environment without authentication credentials: " + env);
         }
         
         return env;
@@ -447,6 +463,7 @@ public class LDAPJNDIConnection extends LDAPConnection
     @Override
     public void bind(String dn, String password) throws LDAPException
     {
+    	LdapContext conn = null;
         try
         {
             if(!isClosed())
@@ -463,15 +480,86 @@ public class LDAPJNDIConnection extends LDAPConnection
             }
             
             logConfiguration(dn, password);
-            setConn(new InitialLdapContext(buildEnvironment(dn, password), null));
-            logger.info("Binded to " + getProviderUrl() + " with " + getAuthentication() + " authentication as " + (dn != null ? dn : "anonymous"));
+            
+            
 
+            if (isTlsEnabled())
+            {
+            	Hashtable<String, String> env = buildEnvironment(dn, password);
+            	
+            	Map<String, String> postEncryptEnv = removeAuthenticationConfigurationFromEnvironment(env);
+            	
+            	conn = new InitialLdapContext(env, null);
+            	initTls();
+            	
+            	/*
+            	 * Note that the username and cleartext password are now encrypted because the authentication
+            	 * is being performed after establishment of the TLS session
+            	 */
+            	applyAuthenticationConfiguration(postEncryptEnv, conn);
+            }
+            else
+            {
+            	conn = new InitialLdapContext(buildEnvironment(dn, password), null);
+            }
+            
+            setConn(conn);
+            logger.info("Binded to " + getProviderUrl() + " with " + getAuthentication() + " authentication as " + (dn != null ? dn : "anonymous"));
         }
         catch (NamingException nex)
         {
+        	silentyCloseDirContext(conn);
             throw handleNamingException(nex, "Bind failed.");
         }
+        catch (Throwable ex)
+        {
+        	silentyCloseDirContext(conn);
+        	throw ex;
+        }
     }
+
+    private void applyAuthenticationConfiguration(Map<String, String> postEncryptEnv, LdapContext conn) throws NamingException
+    {
+    	for (String key : postEncryptEnv.keySet())
+    	{
+    		conn.addToEnvironment(key, postEncryptEnv.get(key));
+    	}
+    }
+    
+    private Map<String, String> removeAuthenticationConfigurationFromEnvironment(Hashtable<String, String> env)
+    {
+		Map<String, String> authEnv = new HashMap<String, String>();
+		
+		for (String key : Arrays.asList(Context.SECURITY_AUTHENTICATION, Context.SECURITY_CREDENTIALS, Context.SECURITY_PRINCIPAL, Context.SECURITY_PROTOCOL))
+		{
+			String value = env.remove(key);
+			if (value != null)
+			{
+				authEnv.put(key, value);
+			}
+		}  
+		
+		return authEnv;
+    }
+    
+	private void initTls() throws LDAPException
+	{
+		try
+		{
+			logger.debug("Enabling TLS");
+			this.tls = (StartTlsResponse) conn.extendedOperation(new StartTlsRequest());
+			final SSLSession negotiate = this.tls.negotiate();
+			logger.info("TLS enabled successfully using protocol " + negotiate.getProtocol());
+		}
+		catch(NamingException nex)
+		{
+			throw handleNamingException(nex, "TLS initialization failed.");
+		}
+		catch(IOException ex)
+		{
+			throw handleException(ex, "TLS negotiation failed.");
+		}
+	}
 
     private String getBindedUserPassword() throws LDAPException
     {
@@ -642,6 +730,20 @@ public class LDAPJNDIConnection extends LDAPConnection
         
         return LDAPException.create(nex);
     }
+
+    private LDAPException handleException(Throwable ex, String logMessage)
+    {
+        if(logger.isDebugEnabled())
+        {
+            logger.debug(logMessage, ex);
+        }
+        else
+        {
+            logger.warn(logMessage);
+        }
+        
+        return new LDAPException(ex.getMessage(), ex);
+    }
     
     /**
      * @param entry
@@ -803,7 +905,7 @@ public class LDAPJNDIConnection extends LDAPConnection
         }
     }
 
-    private void silentyCloseDirContect(DirContext ctx)
+    private void silentyCloseDirContext(DirContext ctx)
     {
         if (ctx != null)
         {
@@ -870,8 +972,8 @@ public class LDAPJNDIConnection extends LDAPConnection
         }
         finally
         {
-            silentyCloseDirContect(attrSchema);
-            silentyCloseDirContect(schema);
+            silentyCloseDirContext(attrSchema);
+            silentyCloseDirContext(schema);
         }
     }
     
@@ -906,8 +1008,8 @@ public class LDAPJNDIConnection extends LDAPConnection
         }
         finally
         {
-            silentyCloseDirContect(attrSchema);
-            silentyCloseDirContect(schema);
+            silentyCloseDirContext(attrSchema);
+            silentyCloseDirContext(schema);
         }    	
     }
     
@@ -937,8 +1039,8 @@ public class LDAPJNDIConnection extends LDAPConnection
         }
         finally
         {
-            silentyCloseDirContect(attrSchema);
-            silentyCloseDirContect(schema);
+            silentyCloseDirContext(attrSchema);
+            silentyCloseDirContext(schema);
         }
     }
     

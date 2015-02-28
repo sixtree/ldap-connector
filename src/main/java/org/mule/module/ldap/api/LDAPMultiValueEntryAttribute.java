@@ -6,15 +6,6 @@
  * LICENSE.md file.
  */
 
-/*
- * Project: Leonards Common Libraries
- * This class is member of leonards.common.ldap
- * File: LDAPMultiValueEntryAttribute.java
- *
- * Property of Leonards / Mindpool
- * Created on Jun 24, 2006 (11:58:07 PM) 
- */
-
 package org.mule.module.ldap.api;
 
 import java.util.ArrayList;

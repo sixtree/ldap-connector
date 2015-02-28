@@ -6,15 +6,6 @@
  * LICENSE.md file.
  */
 
-/*
- * Project: Leonards Common Libraries
- * This class is member of leonards.common.ldap
- * File: InvalidAttributeException.java
- *
- * Property of Leonards / Mindpool
- * Created on Jun 25, 2006 (9:30:24 AM) 
- */
-
 package org.mule.module.ldap.api;
 
 /**
