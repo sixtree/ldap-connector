@@ -43,7 +43,7 @@ public class LDAPJNDIUtils
     /**
      * 
      */
-    public LDAPJNDIUtils()
+    private LDAPJNDIUtils()
     {
     }
 
