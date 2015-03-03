@@ -511,7 +511,7 @@ public class LDAPJNDIConnection extends LDAPConnection
         	silentyCloseDirContext(conn);
             throw handleNamingException(nex, "Bind failed.");
         }
-        catch (Throwable ex)
+        catch (Exception ex)
         {
         	silentyCloseDirContext(conn);
         	throw ex;
@@ -731,7 +731,7 @@ public class LDAPJNDIConnection extends LDAPConnection
         return LDAPException.create(nex);
     }
 
-    private LDAPException handleException(Throwable ex, String logMessage)
+    private LDAPException handleException(Exception ex, String logMessage)
     {
         if(logger.isDebugEnabled())
         {
@@ -1245,7 +1245,7 @@ public class LDAPJNDIConnection extends LDAPConnection
             String user = getBindedUserDn();
             return (user != null ? user : "anonymous") + "@" + getProviderUrl();
         }
-        catch(Throwable ex)
+        catch(Exception ex)
         {
             return "{unknown}@" + getProviderUrl();
         }

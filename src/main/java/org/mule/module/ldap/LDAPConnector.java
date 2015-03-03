@@ -1443,7 +1443,7 @@ public class LDAPConnector
         return keys;
     }
 
-    public static ConnectionException toConnectionException(Throwable ex)
+    public static ConnectionException toConnectionException(Exception ex)
     {
     	if (ex instanceof LDAPException)
     	{

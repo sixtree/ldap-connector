@@ -133,7 +133,7 @@ public abstract class LDAPConnection implements LDAPSchemaAware
         {
             throw new LDAPException("Could not instantiate connection from configuration " + conf, ex);
         }
-        catch (Throwable ex)
+        catch (Exception ex)
         {
             throw new LDAPException("Could not obtain connection from configuration " + conf, ex);
         }

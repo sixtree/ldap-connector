@@ -24,7 +24,7 @@ public class LDAPException extends Exception
 	 * 
 	 */
     private static final long serialVersionUID = 1220777755286608188L;
-    private static Map<Class<? extends NamingException>, Class<? extends LDAPException>> EX_MAPPINGS = new HashMap<Class<? extends NamingException>, Class<? extends LDAPException>>();
+    private static final Map<Class<? extends NamingException>, Class<? extends LDAPException>> EX_MAPPINGS = new HashMap<Class<? extends NamingException>, Class<? extends LDAPException>>();
 
     static
     {
@@ -80,7 +80,7 @@ public class LDAPException extends Exception
         {
             return (LDAPException) exClass.getDeclaredConstructor(String.class, Throwable.class).newInstance(nex.getMessage(), nex);
         }
-        catch(Throwable ex)
+        catch(Exception ex)
         {
             // Null pointer, reflection exceptions, etc.
             return new LDAPException(nex.getMessage(), nex);

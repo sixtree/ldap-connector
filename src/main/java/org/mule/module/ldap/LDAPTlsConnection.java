@@ -148,7 +148,7 @@ public class LDAPTlsConnection implements LDAPConnectionStrategy
                 this.connection.bind(authDn, authPassword);
             }
         }
-        catch(Throwable ex)
+        catch(Exception ex)
         {
             throw LDAPConnector.toConnectionException(ex);
         }
